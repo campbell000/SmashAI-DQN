@@ -1,0 +1,1 @@
+print(require("socket.http").request{ url = "http://www.google.com" });
