@@ -1,32 +1,9 @@
--- We SHOULD be able to load this file in Bizhawk and have it simply work. If everything goes according to plan, and you
--- have the server.py file running, you should see "Hello World" in the output. In the server, you should see the message
--- "Hi from Bizhawk!"
+-- You SHOULD be able to load this file in Bizhawk and double click on it to run it. If everything goes according to plan,
+--and you have tensorflow-server.py file running, you should see POST data in the python console
 
-http = require("socket.http")
-local ltn12 = require 'ltn12'
-local request_body = [[login=user&password=123]]
+client = require("tensorflow-client")
+data = {}
+data["attr1"] = "Hi from bizhawk!"
 
-print("Making request to local server at 8081...")
--- Make a request
-res = {}
-xx, xxx, xxxx, xxxxx = http.request {
-    method = "POST",
-    url = "http://127.0.0.1:8081",
-    headers =
-    {
-        ["Content-Type"] = "application/x-www-form-urlencoded";
-        ["Content-Length"] = #request_body;
-    },
-    source = ltn12.source.string(request_body),
-    sink = ltn12.sink.table(res)
-}
-print(xx)
-print(xxx)
-print(xxxx)
-print(xxxxx)
-
-print("Done, now reading response...")
-response =  table.concat(res)
-print(response)
-
-print("Finished")
+local resp = client.say_hello(data)
+print("Response from tensorflow server: "..resp)
