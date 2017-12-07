@@ -74,6 +74,12 @@ function CLIENT.say_hello(data)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
+function CLIENT.fake_say_hello(data)
+    data["action"] = "hello"
+    local request_body = CLIENT.convert_map_to_form_data(data)
+    print(request_body)
+end
+
 return CLIENT
 
 

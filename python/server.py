@@ -1,24 +1,26 @@
-# This file is the server that listens to requests from Bizhawk / Lua. To run it, simply run it as a normal python
-# program (i.e. python server.py)
-#!/usr/bin/env python
+# This file is the server that listens to requests from Bizhawk / Lua to train (and retrieve predictions for) the
+# Super Smash Bros bot.
 
 PORT = 8081
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
 from cgi import parse_qs, escape
-from dqn import DQN
+from dqn import SSB_DQN
+import ast
 
-dqn_model = DQN()
+dqn_model = SSB_DQN()
 
 def doTraining(data):
-    return dqn_model.train(data)
+    del data['action'] # remove this field cause we don't need it anymore
+    return dqn_model.get_prediction(data, do_train=True)
 
 def doEval(data):
-    return dqn_model.eval(data)
+    del data['action'] # remove this field cause we don't need it anymore
+    return dqn_model.get_prediction(data, do_train=False)
 
 def doHello(data):
-    return "HI FROM TENSORFLOW SERVER!"
+    return "HI FROM TENSORFLOW SERVER! THIS IS WHAT YOU SENT ME:\n"+str(data)
 
 action_map = {
     "train" : doTraining,
@@ -31,7 +33,7 @@ def get_form_data_from_request(req):
     form_data = {}
     fields = parse_qs(req)
     for k in fields:
-        form_data[k.decode()] = fields[k][0].decode()
+        form_data[k.decode()] = ast.literal_eval(fields[k][0].decode())
     return form_data
 
 # This class handles requests from bizhawk
@@ -45,13 +47,20 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         print(fields)
 
         # Perform an action based on the "action" field in the POST data
-        response = action_map[fields["action"]](fields)
+        action_array = action_map[fields["action"]](fields)
+
+        # Convert the action array (a one hot vector indicating which action should be chosen
+        response = transform_actions_for_client(action_array)
 
         # Write the response of the action to the client
         self.send_response(200)
         self.send_header('Content-type','text/html')
         self.end_headers()
         self.wfile.write(bytes(response, "utf8"))
+
+def transform_actions_for_client(action_arr):
+    str_int_array = (str(int(e)) for e in action_arr)
+    return ','.join(str_int_array)
 
 def run():
     print('starting server...')

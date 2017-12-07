@@ -5,58 +5,104 @@ N64 = {
 	RDRAMSize = 0x800000; -- Halved with no expansion pak, can be read from 0x80000318
 }
 
-
--- DO NOT CHANGE THESE. These variables represent the expected order of inputs received from the server.
+-- Enumeration of all actions and their corresponding button presses
 INPUTS = {}
-INPUTS.ATTACK = 1
-INPUTS.SPECIAL = 2
-INPUTS.GRAB = 3
-INPUTS.SHIELD = 4
-INPUTS.JUMP = 5
-INPUTS.HALF_EAST = 6
-INPUTS.EAST = 7
-INPUTS.HALF_NORTH_EAST = 8
-INPUTS.NORTH_EAST = 9
-INPUTS.HALF_NORTH = 10
-INPUTS.NORTH = 11
-INPUTS.HALF_NORTH_WEST = 12
-INPUTS.NORTH_WEST  = 13
-INPUTS.HALF_WEST = 14
-INPUTS.WEST = 15
-INPUTS.HALF_SOUTH_WEST = 16
-INPUTS.SOUTH_WEST = 17
-INPUTS.HALF_SOUTH = 18
-INPUTS.SOUTH = 19
-INPUTS.HALF_SOUTH_EAST = 20
-INPUTS.SOUTH_EAST = 21
-local X = "X Axis"
-local Y = "Y Axis"
+INPUTS.NOTHING = {}
+INPUTS.ATK = {{A = "True" }}
+INPUTS.ATK_HALF_RIGHT = {{["A"] = "True" }, {["X Axis"] = 20}}
+INPUTS.ATK_RIGHT = {{["A"] = "True" }, {["X Axis"] = 127}}
+INPUTS.ATK_HALF_LEFT = {{["A"] = "True" }, {["X Axis"] = -20}}
+INPUTS.ATK_LEFT = {{["A"] = "True" }, {["X Axis"] = -127}}
+INPUTS.ATK_HALF_UP = {{["A"] = "True" }, {["Y Axis"] = 20}}
+INPUTS.ATK_UP = {{["A"] = "True" }, {["Y Axis"] = 256}}
+INPUTS.ATK_HALF_DOWN = {{["A"] = "True" }, {["Y Axis"] = -20}}
+INPUTS.ATK_DOWN = {{["A"] = "True" }, {["Y Axis"] = -127}}
+INPUTS.SPECIAL = {{["B"] = "True" }}
+INPUTS.SPECIAL_HALF_RIGHT = {{["B"] = "True" }, {["X Axis"] = 20}}
+INPUTS.SPECIAL_RIGHT = {{["B"] = "True" }, {["X Axis"] = 127}}
+INPUTS.SPECIAL_HALF_LEFT = {{["B"] = "True" }, {["X Axis"] = -20}}
+INPUTS.SPECIAL_LEFT = {{["B"] = "True" }, {["X Axis"] = -127}}
+INPUTS.SPECIAL_HALF_UP = {{["B"] = "True" }, {["Y Axis"] = 20}}
+INPUTS.SPECIAL_UP = {{["B"] = "True" }, {["Y Axis"] = 127}}
+INPUTS.SPECIAL_HALF_DOWN = {{["B"] = "True" }, {["Y Axis"] = -20}}
+INPUTS.SPECIAL_DOWN = {{["B"] = "True" }, {["Y Axis"] = -127}}
+INPUTS.JUMP = {{["C Right"] = "True" }}
+INPUTS.JUMP_HALF_RIGHT = {{["C Right"] = "True" }, {["X Axis"] = 20}}
+INPUTS.JUMP_RIGHT = {{["C Right"] = "True" }, {["X Axis"] = 127}}
+INPUTS.JUMP_HALF_LEFT = {{["C Right"] = "True" }, {["X Axis"] = -20}}
+INPUTS.JUMP_LEFT = {{["C Right"] = "True" }, {["X Axis"] = -127}}
+INPUTS.JUMP_HALF_UP = {{["C Right"] = "True" }, {["Y Axis"] = 20}}
+INPUTS.JUMP_UP = {{["C Right"] = "True" }, {["Y Axis"] = 127}}
+INPUTS.JUMP_HALF_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -20}}
+INPUTS.JUMP_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -127}}
+INPUTS.SHIELD = {{["Z"] = "True" }}
+INPUTS.SHIELD_HALF_RIGHT = {{["Z"] = "True" }, {["X Axis"] = 20}}
+INPUTS.SHIELD_RIGHT = {{["Z"] = "True" }, {["X Axis"] = 127}}
+INPUTS.SHIELD_HALF_LEFT = {{["Z"] = "True" }, {["X Axis"] = -20}}
+INPUTS.SHIELD_LEFT = {{["Z"] = "True" }, {["X Axis"] = -127}}
+INPUTS.SHIELD_HALF_UP = {{["Z"] = "True" }, {["Y Axis"] = 20}}
+INPUTS.SHIELD_UP = {{["Z"] = "True" }, {["Y Axis"] = 127}}
+INPUTS.SHIELD_HALF_DOWN = {{["Z"] = "True" }, {["Y Axis"] = -20}}
+INPUTS.SHIELD_DOWN = {{["Z"] = "True" }, {["Y Axis"] = -127}}
+INPUTS.GRAB = {{["R"] = "True" }}
+INPUTS.GRAB_HALF_RIGHT = {{["R"] = "True" }, {["X Axis"] = 20}}
+INPUTS.GRAB_RIGHT = {{["R"] = "True" }, {["X Axis"] = 127}}
+INPUTS.GRAB_HALF_LEFT = {{["R"] = "True" }, {["X Axis"] = -20}}
+INPUTS.GRAB_LEFT = {{["R"] = "True" }, {["X Axis"] = -127}}
+INPUTS.GRAB_HALF_UP = {{["R"] = "True" }, {["Y Axis"] = 20}}
+INPUTS.GRAB_UP = {{["R"] = "True" }, {["Y Axis"] = 127}}
+INPUTS.GRAB_HALF_DOWN = {{["R"] = "True" }, {["Y Axis"] = -20}}
+INPUTS.GRAB_DOWN = {{["R"] = "True" }, {["Y Axis"] = -127}}
 
-ANALOG_VALS = {}
-ANALOG_VALS[INPUTS.HALF_EAST] = {X = 56}
-ANALOG_VALS[INPUTS.EAST] = {X = 127}
-ANALOG_VALS[INPUTS.HALF_NORTH_EAST] = {X = 57, Y = 57}
-ANALOG_VALS[INPUTS.NORTH_EAST] = {X = 127, Y = 127}
-ANALOG_VALS[INPUTS.HALF_NORTH] = {Y = 56}
-ANALOG_VALS[INPUTS.NORTH] = {Y = 127}
-ANALOG_VALS[INPUTS.HALF_NORTH_WEST] = {X = -57, Y=57}
-ANALOG_VALS[INPUTS.NORTH_WEST ] = {X = -127, Y = 127}
-ANALOG_VALS[INPUTS.HALF_WEST] = {X = -56}
-ANALOG_VALS[INPUTS.WEST] = {X = -127}
-ANALOG_VALS[INPUTS.HALF_SOUTH_WEST] = {X = -56, Y = -56}
-ANALOG_VALS[INPUTS.SOUTH_WEST] = {X = -127, Y = -127}
-ANALOG_VALS[INPUTS.HALF_SOUTH] = {Y = -56}
-ANALOG_VALS[INPUTS.SOUTH] = {Y = -127}
-ANALOG_VALS[INPUTS.HALF_SOUTH_EAST] = {X = 56, Y = -56}
-ANALOG_VALS[INPUTS.SOUTH_EAST] = {X = 127, Y = -127}
-
-BUTTONS = {}
-BUTTONS[INPUTS.ATTACK] = "A"
-BUTTONS[INPUTS.GRAB] = "R"
-BUTTONS[INPUTS.SHIELD] = "Z"
-BUTTONS[INPUTS.JUMP] = "C Right"
-BUTTONS[INPUTS.SPECIAL] = "B"
-
+-- DO NOT CHANGE THIS ORDERING
+INPUT_ORDER = {
+	INPUTS.NOTHING,
+	INPUTS.ATK,
+	INPUTS.ATK_HALF_RIGHT,
+	INPUTS.ATK_RIGHT,
+	INPUTS.ATK_HALF_LEFT,
+	INPUTS.ATK_LEFT,
+	INPUTS.ATK_HALF_UP,
+	INPUTS.ATK_UP,
+	INPUTS.ATK_HALF_DOWN,
+	INPUTS.ATK_DOWN,
+	INPUTS.SPECIAL,
+	INPUTS.SPECIAL_HALF_RIGHT,
+	INPUTS.SPECIAL_RIGHT,
+	INPUTS.SPECIAL_HALF_LEFT,
+	INPUTS.SPECIAL_LEFT,
+	INPUTS.SPECIAL_HALF_UP,
+	INPUTS.SPECIAL_UP,
+	INPUTS.SPECIAL_HALF_DOWN,
+	INPUTS.SPECIAL_DOWN,
+	INPUTS.JUMP,
+	INPUTS.JUMP_HALF_RIGHT,
+	INPUTS.JUMP_RIGHT,
+	INPUTS.JUMP_HALF_LEFT,
+	INPUTS.JUMP_LEFT,
+	INPUTS.JUMP_HALF_UP,
+	INPUTS.JUMP_UP,
+	INPUTS.JUMP_HALF_DOWN,
+	INPUTS.JUMP_DOWN,
+	INPUTS.SHIELD,
+	INPUTS.SHIELD_HALF_RIGHT,
+	INPUTS.SHIELD_RIGHT,
+	INPUTS.SHIELD_HALF_LEFT,
+	INPUTS.SHIELD_LEFT,
+	INPUTS.SHIELD_HALF_UP,
+	INPUTS.SHIELD_UP,
+	INPUTS.SHIELD_HALF_DOWN,
+	INPUTS.SHIELD_DOWN,
+	INPUTS.GRAB,
+	INPUTS.GRAB_HALF_RIGHT,
+	INPUTS.GRAB_RIGHT,
+	INPUTS.GRAB_HALF_LEFT,
+	INPUTS.GRAB_LEFT,
+	INPUTS.GRAB_HALF_UP,
+	INPUTS.GRAB_UP,
+	INPUTS.GRAB_HALF_DOWN,
+	INPUTS.GRAB_DOWN,
+}
 
 
 GameConstants = {
@@ -120,6 +166,7 @@ GameConstants = {
 		player_data = { -- Relative to player_base[player]
 			controlled_by = 0x02, -- Byte: 0 Human, 1 AI, 2 None
 			character = 0x03, -- Byte
+			damage = 0x4C, -- u32_be, Only applies to the UI, real damage is stored in the player object
 			damage = 0x4C, -- u32_be, Only applies to the UI, real damage is stored in the player object
 		}
 	},

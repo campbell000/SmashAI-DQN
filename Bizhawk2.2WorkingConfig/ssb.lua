@@ -6,6 +6,8 @@ local X = "X Axis"
 local Y = "Y Axis"
 Game = {}
 
+local previous_states = {}
+
 -- This function returns the player
 function Game.getPlayer(player)
 	if type(player) ~= "number" or player == 1 then
@@ -182,6 +184,9 @@ function buildDataMapForServer()
 		data[key_prefix.."shield_recovery_time"] = Game.getShieldRecoveryTime(player)
 		data[key_prefix.."direction"] = Game.getFacingDirection(player)
 		data[key_prefix.."jumps_remaining"] = Game.getJumpsRemaining(player)
+
+		-- Finally, get current damage
+		data[key_prefix.."damage"] = Game.getDamage(player)
 	end
 	return data
 end
@@ -212,45 +217,40 @@ function dump(o)
 end
 
 function parse_server_response_into_inputs(resp)
-	local buttons = {}
-	local analogs = {}
 	local r = {}
 	local tokens = split(resp, ",")
 	for i = 1, #tokens do
 		if tokens[i] == "1" then
-			if i <= 5 then
-				buttons[BUTTONS[i]] = "True"
-			else
-				local analog_vals = ANALOG_VALS[i]
-				x_val = analog_vals["X"]
-				y_val = analog_vals["Y"]
-
-				if x_val ~= nil then
-					analogs[X] = x_val
-				end
-
-				if y_val ~= nil then
-					analogs[Y] = y_val
-				end
-			end
+			return INPUT_ORDER[i]
 		end
 	end
+end
 
-	r[1] = buttons
-	r[2] = analogs
-	return r
+function do_button_presses(inputs)
+	if #inputs > 0 then
+		joypad.set(inputs[1], 1);
+		if #inputs == 2 then
+			joypad.setanalog(inputs[2], 1);
+		end
+	else -- Reset everything if the result is a "NOTHING" input
+		joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
+		joypad.set({}, 1)
+	end
 end
 
 while true do
+	-- We are resetting the joystick for every frame. Unlike buttons, bizhawk does not reset
+	-- the joystick back to neutral after this frame
+	joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
+
 	-- Gather state data, send it to the server, and wait for the server's response (which should be inputs)
-    data = buildDataMapForServer()
-	resp = TF_CLIENT.say_hello(data)
+    local data = buildDataMapForServer()
+	local resp = TF_CLIENT.fake_say_hello(data)
 
 	-- We expect (in string form) a comma-separated list of 0's and 1's, where 1 indicates that the button should be pressed.
-	-- We need to parse the string into a lua table and feed it into Bizhawk as inputs
-	inputs = parse_server_response_into_inputs(resp)
-	joypad.set(inputs[1], 1);
-	joypad.setanalog(inputs[2], 1);
+	-- We need to parse the string into a lua table and feed it into Bizhawk as inputs.
+	--local inputs = parse_server_response_into_inputs(resp)
+	--do_button_presses(inputs)
 
 	emu.frameadvance();
 end

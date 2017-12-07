@@ -1,7 +1,9 @@
 import numpy as np
 import tensorflow as tf
-#basic matlab-style plotting
-import matplotlib.pyplot as plt
+from collections import deque
+import random
+from reward import Rewarder
+import ast
 
 LEARNING_RATE = 0.001
 GAMMA = 0.9
@@ -9,24 +11,128 @@ EPSILON = 0.1
 NUM_HIDDEN_UNITS = 256
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 237 # based on highest value in RAM for pikachu
-INPUT_LENGTH = NUM_POSSIBLE_STATES + 10 # taken from number of non-state params in client data
-OUTPUT_LENGTH = 21 #taken from num buttons/stick inputs
+INPUT_LENGTH = NUM_POSSIBLE_STATES + 11 # taken from number of non-state params in client data
+OUTPUT_LENGTH = 46 # taken from actions taken from gameConstants.lua
+EXPERIENCE_BUFFER_SIZE = 60000
+FUTURE_REWARD_DISCOUNT = 0.99  # decay rate of past observations
+OBSERVATION_STEPS = 50000  # time steps to observe before training
+EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
+INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
+FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
+MINI_BATCH_SIZE = 20  # size of mini batches
+
 
 class SSB_DQN:
-    def __init__(self):
+    """
+    Inspiration for this file comes from # https://github.com/DanielSlater/PyGamePlayer/blob/master/examples/deep_q_pong_player.py.
+    In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
+    """
+
+    def __init__(self, verbose=False):
         self.model = self.build_model()
+        self.rewarder = Rewarder()
+        self.experiences = deque()
+        self.prev_state = None
+        self.prev_action = None
+        self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
+        self.verbose = verbose
+
+    def set_verbose(self, v):
+        self.verbose = v
+
+    def log(self, s):
+        if self.verbose:
+            print(s)
+
+    # experiences consist of two elements. The first element is previous data, the second is current data
+    def add_experience(self, experience):
+        self.experiences.append(experience)
+        if len(self.experiences) >= EXPERIENCE_BUFFER_SIZE:
+            self.experiences.popleft()
+
+    # Given a state, gets an action. Optionally, it also trains the Q-network
+    def get_prediction(self, current_state, do_train):
+        # if we have no previous states, then generate a random action and add it to our replay database.
+        action = None
+        if self.prev_state == None:
+            r = random.randint(0,(OUTPUT_LENGTH - 1))
+            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
+            action[r] = 1
+            self.log("First state ever, picking random action")
+        else:
+            # Add the new experience to the replay DB
+            self.prev_state["action"] = self.prev_action
+            self.log("Previous state:\n"+str(self.prev_state))
+            new_experience = [self.prev_state, current_state]
+            self.add_experience(new_experience)
+
+            # Only train when we are done making our initial observations
+            if len(self.experiences) > OBSERVATION_STEPS and do_train:
+                self.log("Training now because we have "+str(len(self.experiences))+" experiences")
+                self.train()
+
+            # get the next action based on a batch of samples in our replay DB
+            action = self.choose_next_action(current_state)
+
+        self.log("Chose action:\n"+str(action))
+
+        # Adjust the change of chosing a random action
+        self.adjust_random_probability()
+
+        # Regardles of what we've done, update our previous state and return the action
+        self.prev_state = current_state
+        self.prev_action = action
+        return action
+
+    def adjust_random_probability(self):
+        if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
+            self.current_random_action_prob -= (INITIAL_RANDOM_ACTION_PROB - FINAL_RANDOM_ACTION_PROB) / EXPLORE_STEPS
+
+    def choose_next_action(self, current_state):
+        # Transform the map of string and categorical data into strictly numerical data
+        m = self.model
+        self.log("Choosing action based on current random probability: "+str(self.current_random_action_prob))
+        if random.random() <= self.current_random_action_prob:
+            self.log("Chose randomly")
+            r = random.randint(0,(OUTPUT_LENGTH - 1))
+            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
+            action[r] = 1
+            return action
+        else:
+            self.log("Chose NOT randomly")
+            # choose an action given our last state
+            final_action = [0] * OUTPUT_LENGTH
+            tf_current_state = self.transform_client_data(current_state)
+            output = m["sess"].run(m["output"], feed_dict={m["x"]: [tf_current_state]})[0]
+
+            # Convert the output into a one hot. The one hot index should be the index with the highest output
+            action_index = np.argmax(output)
+            final_action[action_index] = 1
+            return final_action
+
+    def get_sample_batch(self):
+        num_samples = MINI_BATCH_SIZE
+        num_total_experiences = len(self.experiences)
+        if num_total_experiences < MINI_BATCH_SIZE:
+            num_samples = num_total_experiences
+        return random.sample(self.experiences, num_samples)
 
     # Converts ssb state data into data appropriate for tensorflow
-    def transform_client_data(self, data):
+    def transform_client_data_for_tensorflow(self, data):
         def get_val(client_data, name, player):
             key = str(player)+""+str(name)
-            return client_data[key]
+            return client_data[key] # Convert the string into a float or int
 
+        # This method converts the state of the player into a one-hot vector. Required since
+        # the state doesn't really mean anything in a numerical sense.
         def convert_state_to_vector(client_data, player):
             k = str(player)+"state"
             val = client_data[k]
-            return np.eye(NUM_POSSIBLE_STATES)[val]
+            v = [0] * NUM_POSSIBLE_STATES
+            v[val] = 1
+            return v
 
+        # DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
         tf_data = []
         for i in range(1, 3):
             # Append numeric data to vector
@@ -40,14 +146,16 @@ class SSB_DQN:
             tf_data.append(get_val(data, "shield_recovery_time", i))
             tf_data.append(get_val(data, "direction", i))
             tf_data.append(get_val(data, "jumps_remaining", i))
+            tf_data.append(get_val(data, "damage", i))
 
             # Convert the categorical state variable into binary data
-            tf_data = tf_data + convert_state_to_vector(data, 1)
+            tf_data = tf_data + convert_state_to_vector(data, i)
 
     # This method builds and returns the model for estimating Q values
     def build_model(self):
         x = tf.placeholder(tf.float32,shape=[None, INPUT_LENGTH])
-        y = tf.placeholder(tf.float32,shape=[None, OUTPUT_LENGTH])
+        action = tf.placeholder(tf.float32, [None, OUTPUT_LENGTH])
+        target = tf.placeholder(tf.float32, [None])
 
         def weight_var(shape):
             initial = tf.truncated_normal(shape, stddev=0.1)
@@ -70,22 +178,59 @@ class SSB_DQN:
         layer_2 = tf.nn.relu(layer_2)
 
         # Create the second hidden layer
-        W3 = weight_var([NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS])
-        b3 = bias_var([NUM_HIDDEN_UNITS])
+        W3 = weight_var([NUM_HIDDEN_UNITS, OUTPUT_LENGTH])
+        b3 = bias_var([OUTPUT_LENGTH])
         out = tf.add(tf.matmul(layer_2, W3), b3)
 
-        # Define loss and accuracy for training
-        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=y))
-        train = tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
+        # loss/training steps
+        readout_action = tf.reduce_sum(tf.multiply(out, action), reduction_indices=1)
+        loss = tf.reduce_mean(tf.square(target - readout_action))
+        train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 
         sess = tf.InteractiveSession()
+        sess.run(tf.initialize_all_variables())
 
         return {
             "x" : x,
-            "y" : y,
+            "action" : action,
+            "target" : target,
             "output" : out,
             "loss" : loss,
-            "train" : train
+            "train" : train,
+            "sess" : sess
         }
 
+    def train(self):
+        m = self.model
+        # Get a mini_batch from the experience replay buffer per DQN
+        mini_batch = self.get_sample_batch()
+        print(mini_batch)
 
+        # Get the necessary data to do DQN
+        previous_states = [self.transform_client_data_for_tensorflow(x[0]) for x in mini_batch]
+        previous_actions = [x[0]["action"] for x in mini_batch]
+        rewards = [self.rewarder.calculate_reward(x) for x in mini_batch]
+        current_states = [self.transform_client_data_for_tensorflow(x[1]) for x in mini_batch]
+        agents_expected_reward = []
+
+        # Get the expected reward per action from the Q-Network
+        print(current_states[0])
+        print(len(current_states))
+        print(len(current_states[0]))
+        agents_reward_per_action = m["sess"].run(m["output"], feed_dict={m["x"]: current_states})
+        for i in range(len(mini_batch)):
+            curr_experience = mini_batch[i]
+
+            # If the state is terminal (which means, if the bot died on the current frame), collect the reward
+            if self.rewarder.is_terminal(curr_experience):
+                agents_expected_reward.append(rewards[i])
+            else:
+                exp_reward = rewards[i] + (FUTURE_REWARD_DISCOUNT * np.max(agents_reward_per_action[i]))
+                agents_expected_reward.append(exp_reward)
+
+        # Learn that the actions in these states lead to the rewards
+        m["sess"].run(m["train"], feed_dict={
+            m["x"] : previous_states,
+            m["action"] : previous_actions,
+            m["target"] : agents_expected_reward
+        })
