@@ -221,9 +221,14 @@ function parse_server_response_into_inputs(resp)
 	local tokens = split(resp, ",")
 	for i = 1, #tokens do
 		if tokens[i] == "1" then
-			return INPUT_ORDER[i]
+			input = INPUT_ORDER[i]
+			if input == nil then
+				print("WE DIDNT GET A VALID ACTION! SOMETHING IS WRONG!")
+			end
+			return input
 		end
 	end
+	print("WE GOT A RESPONSE FROM THE SERVER WITHOUT AN ACTION! SOMETHING IS WRONG!")
 end
 
 function do_button_presses(inputs)
@@ -232,7 +237,8 @@ function do_button_presses(inputs)
 		if #inputs == 2 then
 			joypad.setanalog(inputs[2], 1);
 		end
-	else -- Reset everything if the result is a "NOTHING" input
+	else
+		-- Reset everything if the result is a "NOTHING" input
 		joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
 		joypad.set({}, 1)
 	end
@@ -245,12 +251,12 @@ while true do
 
 	-- Gather state data, send it to the server, and wait for the server's response (which should be inputs)
     local data = buildDataMapForServer()
-	local resp = TF_CLIENT.fake_say_hello(data)
+	local resp = TF_CLIENT.send_data_for_training(data)
 
 	-- We expect (in string form) a comma-separated list of 0's and 1's, where 1 indicates that the button should be pressed.
 	-- We need to parse the string into a lua table and feed it into Bizhawk as inputs.
-	--local inputs = parse_server_response_into_inputs(resp)
-	--do_button_presses(inputs)
+	local inputs = parse_server_response_into_inputs(resp)
+	do_button_presses(inputs)
 
 	emu.frameadvance();
 end

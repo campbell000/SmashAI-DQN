@@ -5,7 +5,9 @@ N64 = {
 	RDRAMSize = 0x800000; -- Halved with no expansion pak, can be read from 0x80000318
 }
 
--- Enumeration of all actions and their corresponding button presses
+-- Enumeration of all actions and their corresponding button presses. Note that we trimmed the number of grabs and shields
+-- since there's no functional difference between half_right_sheild and right_shield. Plus, it makes the bot do too
+-- many grabs, which screws up exploration/training
 INPUTS = {}
 INPUTS.NOTHING = {}
 INPUTS.ATK = {{A = "True" }}
@@ -36,27 +38,24 @@ INPUTS.JUMP_UP = {{["C Right"] = "True" }, {["Y Axis"] = 127}}
 INPUTS.JUMP_HALF_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -20}}
 INPUTS.JUMP_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -127}}
 INPUTS.SHIELD = {{["Z"] = "True" }}
-INPUTS.SHIELD_HALF_RIGHT = {{["Z"] = "True" }, {["X Axis"] = 20}}
 INPUTS.SHIELD_RIGHT = {{["Z"] = "True" }, {["X Axis"] = 127}}
-INPUTS.SHIELD_HALF_LEFT = {{["Z"] = "True" }, {["X Axis"] = -20}}
 INPUTS.SHIELD_LEFT = {{["Z"] = "True" }, {["X Axis"] = -127}}
-INPUTS.SHIELD_HALF_UP = {{["Z"] = "True" }, {["Y Axis"] = 20}}
-INPUTS.SHIELD_UP = {{["Z"] = "True" }, {["Y Axis"] = 127}}
-INPUTS.SHIELD_HALF_DOWN = {{["Z"] = "True" }, {["Y Axis"] = -20}}
-INPUTS.SHIELD_DOWN = {{["Z"] = "True" }, {["Y Axis"] = -127}}
 INPUTS.GRAB = {{["R"] = "True" }}
 INPUTS.GRAB_HALF_RIGHT = {{["R"] = "True" }, {["X Axis"] = 20}}
 INPUTS.GRAB_RIGHT = {{["R"] = "True" }, {["X Axis"] = 127}}
 INPUTS.GRAB_HALF_LEFT = {{["R"] = "True" }, {["X Axis"] = -20}}
 INPUTS.GRAB_LEFT = {{["R"] = "True" }, {["X Axis"] = -127}}
-INPUTS.GRAB_HALF_UP = {{["R"] = "True" }, {["Y Axis"] = 20}}
-INPUTS.GRAB_UP = {{["R"] = "True" }, {["Y Axis"] = 127}}
-INPUTS.GRAB_HALF_DOWN = {{["R"] = "True" }, {["Y Axis"] = -20}}
-INPUTS.GRAB_DOWN = {{["R"] = "True" }, {["Y Axis"] = -127}}
+INPUTS.HALF_RIGHT = {{}, {["X Axis"] = 40}}
+INPUTS.RIGHT = {{}, {["X Axis"] = 127}}
+INPUTS.HALF_LEFT = {{}, {["X Axis"] = -40}}
+INPUTS.LEFT = {{}, {["X Axis"] = -127}}
+INPUTS.HALF_UP = {{}, {["Y Axis"] = 40}}
+INPUTS.UP = {{}, {["Y Axis"] = 127}}
+INPUTS.HALF_DOWN = {{}, {["Y Axis"] = -40}}
+INPUTS.DOWN = {{}, {["Y Axis"] = -127}}
 
 -- DO NOT CHANGE THIS ORDERING
 INPUT_ORDER = {
-	INPUTS.NOTHING,
 	INPUTS.ATK,
 	INPUTS.ATK_HALF_RIGHT,
 	INPUTS.ATK_RIGHT,
@@ -85,23 +84,21 @@ INPUT_ORDER = {
 	INPUTS.JUMP_HALF_DOWN,
 	INPUTS.JUMP_DOWN,
 	INPUTS.SHIELD,
-	INPUTS.SHIELD_HALF_RIGHT,
 	INPUTS.SHIELD_RIGHT,
-	INPUTS.SHIELD_HALF_LEFT,
 	INPUTS.SHIELD_LEFT,
-	INPUTS.SHIELD_HALF_UP,
-	INPUTS.SHIELD_UP,
-	INPUTS.SHIELD_HALF_DOWN,
-	INPUTS.SHIELD_DOWN,
 	INPUTS.GRAB,
 	INPUTS.GRAB_HALF_RIGHT,
 	INPUTS.GRAB_RIGHT,
 	INPUTS.GRAB_HALF_LEFT,
 	INPUTS.GRAB_LEFT,
-	INPUTS.GRAB_HALF_UP,
-	INPUTS.GRAB_UP,
-	INPUTS.GRAB_HALF_DOWN,
-	INPUTS.GRAB_DOWN,
+	INPUTS.HALF_RIGHT,
+	INPUTS.RIGHT,
+	INPUTS.HALF_LEFT,
+	INPUTS.LEFT,
+	INPUTS.HALF_UP,
+	INPUTS.UP,
+	INPUTS.HALF_DOWN,
+	INPUTS.DOWN,
 }
 
 

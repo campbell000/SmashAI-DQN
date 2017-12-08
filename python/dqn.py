@@ -3,16 +3,17 @@ import tensorflow as tf
 from collections import deque
 import random
 from reward import Rewarder
+from evaluator import Evaluator
 import ast
 
 LEARNING_RATE = 0.001
 GAMMA = 0.9
 EPSILON = 0.1
-NUM_HIDDEN_UNITS = 256
+NUM_HIDDEN_UNITS = 512
 NUM_HIDDEN_LAYERS = 2
-NUM_POSSIBLE_STATES = 237 # based on highest value in RAM for pikachu
-INPUT_LENGTH = NUM_POSSIBLE_STATES + 11 # taken from number of non-state params in client data
-OUTPUT_LENGTH = 46 # taken from actions taken from gameConstants.lua
+NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
+INPUT_LENGTH = (NUM_POSSIBLE_STATES + 11) * 2 # taken from number of non-state params in client data, multiplied by 2 players
+OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
 EXPERIENCE_BUFFER_SIZE = 60000
 FUTURE_REWARD_DISCOUNT = 0.99  # decay rate of past observations
 OBSERVATION_STEPS = 50000  # time steps to observe before training
@@ -36,6 +37,9 @@ class SSB_DQN:
         self.prev_action = None
         self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
         self.verbose = verbose
+        self.evaluator = Evaluator()
+        self.print_once_map = {}
+        self.num_iterations = 0
 
     def set_verbose(self, v):
         self.verbose = v
@@ -43,6 +47,11 @@ class SSB_DQN:
     def log(self, s):
         if self.verbose:
             print(s)
+
+    def print_once(self, key, msg):
+        if key not in self.print_once_map:
+            self.print_once_map[key] = 0
+            print(msg)
 
     # experiences consist of two elements. The first element is previous data, the second is current data
     def add_experience(self, experience):
@@ -52,6 +61,8 @@ class SSB_DQN:
 
     # Given a state, gets an action. Optionally, it also trains the Q-network
     def get_prediction(self, current_state, do_train):
+        self.num_iterations += 1
+
         # if we have no previous states, then generate a random action and add it to our replay database.
         action = None
         if self.prev_state == None:
@@ -62,19 +73,28 @@ class SSB_DQN:
         else:
             # Add the new experience to the replay DB
             self.prev_state["action"] = self.prev_action
-            self.log("Previous state:\n"+str(self.prev_state))
             new_experience = [self.prev_state, current_state]
             self.add_experience(new_experience)
 
+            # If we're in verbose mode, show the current reward for the current frame. You know, to make sure thing work.
+            if self.verbose:
+                self.rewarder.calculate_reward(new_experience, for_current_verbose=True)
+
             # Only train when we are done making our initial observations
             if len(self.experiences) > OBSERVATION_STEPS and do_train:
+                self.print_once("a", "Started Training!")
                 self.log("Training now because we have "+str(len(self.experiences))+" experiences")
                 self.train()
+            else:
+                self.log("Still not training...only gathering data at "+str(len(self.experiences)))
 
             # get the next action based on a batch of samples in our replay DB
             action = self.choose_next_action(current_state)
 
         self.log("Chose action:\n"+str(action))
+
+        if self.num_iterations % 50000 == 0:
+            self.status_report()
 
         # Adjust the change of chosing a random action
         self.adjust_random_probability()
@@ -83,6 +103,12 @@ class SSB_DQN:
         self.prev_state = current_state
         self.prev_action = action
         return action
+
+    def status_report(self):
+        print("STATUS REPORT!")
+        print("Random Prob: "+str(self.current_random_action_prob))
+        print("NUM ITERATIONS: "+str(self.num_iterations))
+
 
     def adjust_random_probability(self):
         if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
@@ -102,12 +128,15 @@ class SSB_DQN:
             self.log("Chose NOT randomly")
             # choose an action given our last state
             final_action = [0] * OUTPUT_LENGTH
-            tf_current_state = self.transform_client_data(current_state)
-            output = m["sess"].run(m["output"], feed_dict={m["x"]: [tf_current_state]})[0]
+            tf_current_state = self.transform_client_data_for_tensorflow(current_state)
+            output = m["output"].eval(feed_dict={m["x"]: [tf_current_state]})[0]
 
             # Convert the output into a one hot. The one hot index should be the index with the highest output
             action_index = np.argmax(output)
             final_action[action_index] = 1
+
+            # Log the max q value for evaluation purposes
+            self.evaluator.add_q_value(np.max(output))
             return final_action
 
     def get_sample_batch(self):
@@ -129,7 +158,13 @@ class SSB_DQN:
             k = str(player)+"state"
             val = client_data[k]
             v = [0] * NUM_POSSIBLE_STATES
-            v[val] = 1
+            try:
+                v[val] = 1
+            except:
+                print(val)
+                print(v)
+                raise Exception("State value exceeded expected macimum number of states!")
+
             return v
 
         # DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
@@ -150,6 +185,7 @@ class SSB_DQN:
 
             # Convert the categorical state variable into binary data
             tf_data = tf_data + convert_state_to_vector(data, i)
+        return tf_data
 
     # This method builds and returns the model for estimating Q values
     def build_model(self):
@@ -158,24 +194,22 @@ class SSB_DQN:
         target = tf.placeholder(tf.float32, [None])
 
         def weight_var(shape):
-            initial = tf.truncated_normal(shape, stddev=0.1)
+            initial = tf.truncated_normal(shape, stddev=0.01)
             return tf.Variable(initial)
 
         def bias_var(shape):
-            initial = tf.constant(0.1, shape=shape)
+            initial = tf.constant(0.01, shape=shape)
             return tf.Variable(initial)
 
         # Create the first hidden layer
         W1 = weight_var([INPUT_LENGTH, NUM_HIDDEN_UNITS])
         b1 = bias_var([NUM_HIDDEN_UNITS])
-        layer_1 = tf.add(tf.matmul(x, W1), b1)
-        layer_1 = tf.nn.relu(layer_1)
+        layer_1 = tf.nn.relu(tf.add(tf.matmul(x, W1), b1))
 
         # Create the second hidden layer
         W2 = weight_var([NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS])
         b2 = bias_var([NUM_HIDDEN_UNITS])
-        layer_2 = tf.add(tf.matmul(layer_1, W2), b2)
-        layer_2 = tf.nn.relu(layer_2)
+        layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, W2), b2))
 
         # Create the second hidden layer
         W3 = weight_var([NUM_HIDDEN_UNITS, OUTPUT_LENGTH])
@@ -183,8 +217,7 @@ class SSB_DQN:
         out = tf.add(tf.matmul(layer_2, W3), b3)
 
         # loss/training steps
-        readout_action = tf.reduce_sum(tf.multiply(out, action), reduction_indices=1)
-        loss = tf.reduce_mean(tf.square(target - readout_action))
+        loss = tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=action)
         train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 
         sess = tf.InteractiveSession()
@@ -204,7 +237,6 @@ class SSB_DQN:
         m = self.model
         # Get a mini_batch from the experience replay buffer per DQN
         mini_batch = self.get_sample_batch()
-        print(mini_batch)
 
         # Get the necessary data to do DQN
         previous_states = [self.transform_client_data_for_tensorflow(x[0]) for x in mini_batch]
@@ -214,10 +246,7 @@ class SSB_DQN:
         agents_expected_reward = []
 
         # Get the expected reward per action from the Q-Network
-        print(current_states[0])
-        print(len(current_states))
-        print(len(current_states[0]))
-        agents_reward_per_action = m["sess"].run(m["output"], feed_dict={m["x"]: current_states})
+        agents_reward_per_action = m["output"].eval(feed_dict={m["x"]: current_states})
         for i in range(len(mini_batch)):
             curr_experience = mini_batch[i]
 

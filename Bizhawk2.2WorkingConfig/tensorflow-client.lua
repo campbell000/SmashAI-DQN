@@ -4,6 +4,11 @@ http = require("socket.http")
 local ltn12 = require 'ltn12'
 local CLIENT = {}
 
+-- NOTE: These must match the ACTION_MAP variable in server.py. The indices must line up correctly
+local TRAIN = 0
+local EVAL = 1
+local HELLO = 2
+
 function dump(o)
     if type(o) == 'table' then
         local s = '{ '
@@ -56,26 +61,26 @@ end
 
 -- This function sends data to the server with the intention of training the model. It returns an output
 function CLIENT.send_data_for_training(data)
-    data["action"] = "train"
+    data["action"] = TRAIN
     local request_body = CLIENT.convert_map_to_form_data(data)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 -- This function sends data to the server and does NOT traing the model. It simply returns a prediction.
 function CLIENT.send_data_for_prediction(data)
-    data["action"] = "eval"
+    data["action"] = EVAL
     local request_body = CLIENT.convert_map_to_form_data(data)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 function CLIENT.say_hello(data)
-    data["action"] = "hello"
+    data["action"] = HELLO
     local request_body = CLIENT.convert_map_to_form_data(data)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 function CLIENT.fake_say_hello(data)
-    data["action"] = "hello"
+    data["action"] = HELLO
     local request_body = CLIENT.convert_map_to_form_data(data)
     print(request_body)
 end
