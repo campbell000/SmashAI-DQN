@@ -43,6 +43,15 @@ function Game.getMovementState(player)
 	return 0;
 end
 
+function Game.getMovementFrame(player)
+	local playerActor = Game.getPlayer(player);
+	if isRDRAM(playerActor) then
+		return mainmemory.read_u32_be(playerActor + GameConstants.player_fields.MovementFrame);
+	end
+	return 0;
+end
+
+
 function Game.getFacingDirection(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -182,8 +191,9 @@ function buildDataMapForServer()
 		data[key_prefix.."state"] = Game.getMovementState(player) -- categorical! This needs to be one-hot encoded!
 		data[key_prefix.."shield_size"] = Game.getShieldSize(player)
 		data[key_prefix.."shield_recovery_time"] = Game.getShieldRecoveryTime(player)
-		data[key_prefix.."direction"] = Game.getFacingDirection(player)
 		data[key_prefix.."jumps_remaining"] = Game.getJumpsRemaining(player)
+		data[key_prefix.."direction"] = Game.getFacingDirection(player)
+		data[key_prefix.."state_frame"] = Game.getMovementFrame(player)
 
 		-- Finally, get current damage
 		data[key_prefix.."damage"] = Game.getDamage(player)

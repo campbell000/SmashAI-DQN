@@ -12,7 +12,7 @@ EPSILON = 0.1
 NUM_HIDDEN_UNITS = 512
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
-INPUT_LENGTH = (NUM_POSSIBLE_STATES + 11) * 2 # taken from number of non-state params in client data, multiplied by 2 players
+INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
 OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
 EXPERIENCE_BUFFER_SIZE = 60000
 FUTURE_REWARD_DISCOUNT = 0.99  # decay rate of past observations
@@ -150,6 +150,8 @@ class SSB_DQN:
     def transform_client_data_for_tensorflow(self, data):
         def get_val(client_data, name, player):
             key = str(player)+""+str(name)
+            if key not in client_data:
+                raise Exception("Looked for "+str(key)+" in the client's data, but we couldn't find it!")
             return client_data[key] # Convert the string into a float or int
 
         # This method converts the state of the player into a one-hot vector. Required since
@@ -182,6 +184,7 @@ class SSB_DQN:
             tf_data.append(get_val(data, "direction", i))
             tf_data.append(get_val(data, "jumps_remaining", i))
             tf_data.append(get_val(data, "damage", i))
+            tf_data.append(get_val(data, "state_frame", i))
 
             # Convert the categorical state variable into binary data
             tf_data = tf_data + convert_state_to_vector(data, i)
