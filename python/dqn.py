@@ -13,14 +13,15 @@ NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
 OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 50001
+EXPERIENCE_BUFFER_SIZE = 60000
 FUTURE_REWARD_DISCOUNT = 0.90  # decay rate of past observations
 OBSERVATION_STEPS = 50000  # time steps to observe before training
 EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
 INITIAL_RANDOM_ACTION_PROB = 1  # starting chance of an action being random
 FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
 MINI_BATCH_SIZE = 20  # size of mini batches
-NUM_STEPS_FOR_TARGET_NETWORK = 1000
+NUM_STEPS_FOR_TARGET_NETWORK = 2000
+STATUS_REPORT_INTERVAL = 10000
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
@@ -31,7 +32,7 @@ class SSB_DQN:
     In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
     """
 
-    def __init__(self, verbose=False):
+    def __init__(self, session, verbose=False):
         self.rewarder = Rewarder()
         self.experiences = deque()
         self.prev_state = None
@@ -41,14 +42,9 @@ class SSB_DQN:
         self.evaluator = Evaluator()
         self.print_once_map = {}
         self.num_iterations = 0
-        self.model = None
-        self.target_model = None
-        self.sess = None
-
-    def init_NNs(self):
-        self.sess = tf.Session()
-        self.model = NeuralNetwork(MAIN_NETWORK, self.sess, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
-        self.target_model = NeuralNetwork(MAIN_NETWORK, self.sess, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.model = NeuralNetwork(MAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.sess = session
         self.sess.run(tf.global_variables_initializer())
 
     def set_verbose(self, v):
@@ -71,53 +67,48 @@ class SSB_DQN:
 
     # Given a state, gets an action. Optionally, it also trains the Q-network
     def get_prediction(self, current_state, do_train):
-        if self.sess == None:
-            print("Started Training!")
-            self.init_NNs()
+        self.num_iterations += 1
+        self.print_once("started", "Got connection, started training")
 
-        with self.sess.as_default():
-            self.num_iterations += 1
+        # if we have no previous states, then generate a random action and add it to our replay database.
+        action = None
+        if self.prev_state == None:
+            r = random.randint(0,(OUTPUT_LENGTH - 1))
+            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
+            action[r] = 1
+            self.log("First state ever, picking random action")
+        else:
+            # Add the new experience to the replay DB
+            self.prev_state["action"] = self.prev_action
+            new_experience = [self.prev_state, current_state]
+            self.add_experience(new_experience)
 
-            # if we have no previous states, then generate a random action and add it to our replay database.
-            action = None
-            if self.prev_state == None:
-                r = random.randint(0,(OUTPUT_LENGTH - 1))
-                action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
-                action[r] = 1
-                self.log("First state ever, picking random action")
+            # If we're in verbose mode, show the current reward for the current frame. You know, to make sure thing work.
+            if self.verbose:
+                self.rewarder.calculate_reward(new_experience, for_current_verbose=True)
+
+            # Only train when we are done making our initial observations
+            if len(self.experiences) > OBSERVATION_STEPS and do_train:
+                self.print_once("started_training", "Training now because we have "+str(len(self.experiences))+" experiences")
+                self.train()
             else:
-                # Add the new experience to the replay DB
-                self.prev_state["action"] = self.prev_action
-                new_experience = [self.prev_state, current_state]
-                self.add_experience(new_experience)
+                self.log("Still not training...only gathering data at "+str(len(self.experiences)))
 
-                # If we're in verbose mode, show the current reward for the current frame. You know, to make sure thing work.
-                if self.verbose:
-                    self.rewarder.calculate_reward(new_experience, for_current_verbose=True)
+            # get the next action based on a batch of samples in our replay DB
+            action = self.choose_next_action(current_state)
 
-                # Only train when we are done making our initial observations
-                if len(self.experiences) > OBSERVATION_STEPS and do_train:
-                    self.print_once("a", "Started Training!")
-                    self.log("Training now because we have "+str(len(self.experiences))+" experiences")
-                    self.train()
-                else:
-                    self.log("Still not training...only gathering data at "+str(len(self.experiences)))
+        self.log("Chose action:\n"+str(action))
 
-                # get the next action based on a batch of samples in our replay DB
-                action = self.choose_next_action(current_state)
+        if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
+            self.status_report()
 
-            self.log("Chose action:\n"+str(action))
+        # Adjust the change of chosing a random action
+        self.adjust_random_probability()
 
-            if self.num_iterations % 50000 == 0:
-                self.status_report()
-
-            # Adjust the change of chosing a random action
-            self.adjust_random_probability()
-
-            # Regardles of what we've done, update our previous state and return the action
-            self.prev_state = current_state
-            self.prev_action = action
-            return action
+        # Regardles of what we've done, update our previous state and return the action
+        self.prev_state = current_state
+        self.prev_action = action
+        return action
 
     def status_report(self):
         print("STATUS REPORT!")
