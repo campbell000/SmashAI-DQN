@@ -8,8 +8,12 @@ from urllib.parse import urlparse
 from cgi import parse_qs, escape
 from dqn import SSB_DQN
 import ast
+import sys
 
-dqn_model = SSB_DQN(verbose=False)
+verbose = False
+if len(sys.argv) >= 2 and sys.argv[1] == "verbose":
+    verbose = True
+dqn_model = SSB_DQN(verbose=verbose)
 
 def doTraining(data):
     del data['action'] # remove this field cause we don't need it anymore

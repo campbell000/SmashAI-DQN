@@ -4,24 +4,26 @@ from collections import deque
 import random
 from reward import Rewarder
 from evaluator import Evaluator
+from nn import NeuralNetwork
 import ast
 
 LEARNING_RATE = 0.001
-GAMMA = 0.9
-EPSILON = 0.1
-NUM_HIDDEN_UNITS = 512
+NUM_HIDDEN_UNITS = 256
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
 OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 60000
-FUTURE_REWARD_DISCOUNT = 0.99  # decay rate of past observations
+EXPERIENCE_BUFFER_SIZE = 50001
+FUTURE_REWARD_DISCOUNT = 0.90  # decay rate of past observations
 OBSERVATION_STEPS = 50000  # time steps to observe before training
 EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
-INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
+INITIAL_RANDOM_ACTION_PROB = 1  # starting chance of an action being random
 FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
 MINI_BATCH_SIZE = 20  # size of mini batches
+NUM_STEPS_FOR_TARGET_NETWORK = 1000
 
+MAIN_NETWORK = "main"
+TRAIN_NETWORK = "TRAIN"
 
 class SSB_DQN:
     """
@@ -30,7 +32,6 @@ class SSB_DQN:
     """
 
     def __init__(self, verbose=False):
-        self.model = self.build_model()
         self.rewarder = Rewarder()
         self.experiences = deque()
         self.prev_state = None
@@ -40,6 +41,15 @@ class SSB_DQN:
         self.evaluator = Evaluator()
         self.print_once_map = {}
         self.num_iterations = 0
+        self.model = None
+        self.target_model = None
+        self.sess = None
+
+    def init_NNs(self):
+        self.sess = tf.Session()
+        self.model = NeuralNetwork(MAIN_NETWORK, self.sess, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.target_model = NeuralNetwork(MAIN_NETWORK, self.sess, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.sess.run(tf.global_variables_initializer())
 
     def set_verbose(self, v):
         self.verbose = v
@@ -61,48 +71,53 @@ class SSB_DQN:
 
     # Given a state, gets an action. Optionally, it also trains the Q-network
     def get_prediction(self, current_state, do_train):
-        self.num_iterations += 1
+        if self.sess == None:
+            print("Started Training!")
+            self.init_NNs()
 
-        # if we have no previous states, then generate a random action and add it to our replay database.
-        action = None
-        if self.prev_state == None:
-            r = random.randint(0,(OUTPUT_LENGTH - 1))
-            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
-            action[r] = 1
-            self.log("First state ever, picking random action")
-        else:
-            # Add the new experience to the replay DB
-            self.prev_state["action"] = self.prev_action
-            new_experience = [self.prev_state, current_state]
-            self.add_experience(new_experience)
+        with self.sess.as_default():
+            self.num_iterations += 1
 
-            # If we're in verbose mode, show the current reward for the current frame. You know, to make sure thing work.
-            if self.verbose:
-                self.rewarder.calculate_reward(new_experience, for_current_verbose=True)
-
-            # Only train when we are done making our initial observations
-            if len(self.experiences) > OBSERVATION_STEPS and do_train:
-                self.print_once("a", "Started Training!")
-                self.log("Training now because we have "+str(len(self.experiences))+" experiences")
-                self.train()
+            # if we have no previous states, then generate a random action and add it to our replay database.
+            action = None
+            if self.prev_state == None:
+                r = random.randint(0,(OUTPUT_LENGTH - 1))
+                action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
+                action[r] = 1
+                self.log("First state ever, picking random action")
             else:
-                self.log("Still not training...only gathering data at "+str(len(self.experiences)))
+                # Add the new experience to the replay DB
+                self.prev_state["action"] = self.prev_action
+                new_experience = [self.prev_state, current_state]
+                self.add_experience(new_experience)
 
-            # get the next action based on a batch of samples in our replay DB
-            action = self.choose_next_action(current_state)
+                # If we're in verbose mode, show the current reward for the current frame. You know, to make sure thing work.
+                if self.verbose:
+                    self.rewarder.calculate_reward(new_experience, for_current_verbose=True)
 
-        self.log("Chose action:\n"+str(action))
+                # Only train when we are done making our initial observations
+                if len(self.experiences) > OBSERVATION_STEPS and do_train:
+                    self.print_once("a", "Started Training!")
+                    self.log("Training now because we have "+str(len(self.experiences))+" experiences")
+                    self.train()
+                else:
+                    self.log("Still not training...only gathering data at "+str(len(self.experiences)))
 
-        if self.num_iterations % 50000 == 0:
-            self.status_report()
+                # get the next action based on a batch of samples in our replay DB
+                action = self.choose_next_action(current_state)
 
-        # Adjust the change of chosing a random action
-        self.adjust_random_probability()
+            self.log("Chose action:\n"+str(action))
 
-        # Regardles of what we've done, update our previous state and return the action
-        self.prev_state = current_state
-        self.prev_action = action
-        return action
+            if self.num_iterations % 50000 == 0:
+                self.status_report()
+
+            # Adjust the change of chosing a random action
+            self.adjust_random_probability()
+
+            # Regardles of what we've done, update our previous state and return the action
+            self.prev_state = current_state
+            self.prev_action = action
+            return action
 
     def status_report(self):
         print("STATUS REPORT!")
@@ -190,54 +205,9 @@ class SSB_DQN:
             tf_data = tf_data + convert_state_to_vector(data, i)
         return tf_data
 
-    # This method builds and returns the model for estimating Q values
-    def build_model(self):
-        x = tf.placeholder(tf.float32,shape=[None, INPUT_LENGTH])
-        action = tf.placeholder(tf.float32, [None, OUTPUT_LENGTH])
-        target = tf.placeholder(tf.float32, [None])
-
-        def weight_var(shape):
-            initial = tf.truncated_normal(shape, stddev=0.01)
-            return tf.Variable(initial)
-
-        def bias_var(shape):
-            initial = tf.constant(0.01, shape=shape)
-            return tf.Variable(initial)
-
-        # Create the first hidden layer
-        W1 = weight_var([INPUT_LENGTH, NUM_HIDDEN_UNITS])
-        b1 = bias_var([NUM_HIDDEN_UNITS])
-        layer_1 = tf.nn.relu(tf.add(tf.matmul(x, W1), b1))
-
-        # Create the second hidden layer
-        W2 = weight_var([NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS])
-        b2 = bias_var([NUM_HIDDEN_UNITS])
-        layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, W2), b2))
-
-        # Create the second hidden layer
-        W3 = weight_var([NUM_HIDDEN_UNITS, OUTPUT_LENGTH])
-        b3 = bias_var([OUTPUT_LENGTH])
-        out = tf.add(tf.matmul(layer_2, W3), b3)
-
-        # loss/training steps
-        loss = tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=action)
-        train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
-
-        sess = tf.InteractiveSession()
-        sess.run(tf.initialize_all_variables())
-
-        return {
-            "x" : x,
-            "action" : action,
-            "target" : target,
-            "output" : out,
-            "loss" : loss,
-            "train" : train,
-            "sess" : sess
-        }
-
     def train(self):
         m = self.model
+        t = self.target_model
         # Get a mini_batch from the experience replay buffer per DQN
         mini_batch = self.get_sample_batch()
 
@@ -248,8 +218,8 @@ class SSB_DQN:
         current_states = [self.transform_client_data_for_tensorflow(x[1]) for x in mini_batch]
         agents_expected_reward = []
 
-        # Get the expected reward per action from the Q-Network
-        agents_reward_per_action = m["output"].eval(feed_dict={m["x"]: current_states})
+        # Get the expected reward per action from the TARGET Q-Network
+        agents_reward_per_action = t["output"].eval(feed_dict={t["x"]: current_states})
         for i in range(len(mini_batch)):
             curr_experience = mini_batch[i]
 
@@ -266,3 +236,32 @@ class SSB_DQN:
             m["action"] : previous_actions,
             m["target"] : agents_expected_reward
         })
+
+        # Every N iterations, update the training network with the model of the "real" network
+        if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:
+            if self.num_iterations % (NUM_STEPS_FOR_TARGET_NETWORK * 10) == 0:
+                print("Updated target network 100 times more!")
+
+            copy_ops = self.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
+            self.sess.run(copy_ops)
+
+    def get_copy_var_ops(self, dest_name, src_name):
+        """Creates TF operations that copy weights from `src_scope` to `dest_scope`
+        Args:
+            dest_scope_name (str): Destination weights (copy to)
+            src_scope_name (str): Source weight (copy from)
+        Returns:
+            List[tf.Operation]: Update operations are created and returned
+        """
+        # Copy variables src_scope to dest_scope
+        op_holder = []
+
+        src_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=src_name)
+        dest_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=dest_name)
+
+        for src_var, dest_var in zip(src_vars, dest_vars):
+            op_holder.append(dest_var.assign(src_var.value()))
+
+        return op_holder
