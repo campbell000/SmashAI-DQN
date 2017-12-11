@@ -1,3 +1,5 @@
+-- This file reads game states variables from memory, and sends the game state to the Learning Server.
+
 -- This only works for the USA rom
 require "global";
 require "gameConstants";
@@ -19,6 +21,7 @@ function Game.getPlayer(player)
 	end
 end
 
+-- This function returns the numerical representation of the player's character
 function Game.getCharacter(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -27,6 +30,7 @@ function Game.getCharacter(player)
 	return 0x1c
 end
 
+-- This function returns the String representation of the player's character (ex: Yoshi)
 function Game.getCharacterName(player)
 	character_byte_value = Game.getCharacter(player);
 	if (keyExists(GameConstants.characters, character_byte_value)) then
@@ -35,6 +39,7 @@ function Game.getCharacterName(player)
 	return "None"
 end
 
+-- This function returns the numerical representation of the player's current state ("standing", "attacking", etc)
 function Game.getMovementState(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -43,6 +48,8 @@ function Game.getMovementState(player)
 	return 0;
 end
 
+-- This function returns the frame number of the player's current action. For example, if an attack lasts 31 frames,
+-- this method will return 0-31
 function Game.getMovementFrame(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -51,7 +58,7 @@ function Game.getMovementFrame(player)
 	return 0;
 end
 
-
+-- This method returns 1 if the character is facing right, -1 if the character is facing left
 function Game.getFacingDirection(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -114,7 +121,7 @@ function Game.getPlayerCoordinateData(player, dimension)
 	return data;
 end
 
-
+-- This method returns the number of jumps remaining for the given player
 function Game.getJumpsRemaining(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -126,7 +133,7 @@ function Game.getJumpsRemaining(player)
 	return 0;
 end
 
-
+-- This method returns the player's current shield size (i.e. shield health)
 function Game.getShieldSize(player)
 	local playerActor = Game.getPlayer(player);
 	if isRDRAM(playerActor) then
@@ -169,7 +176,7 @@ function dumpPlayerInfo(player)
 	gui.drawString(0,80, "Damage%: " .. Game.getDamage(player), null, null, 9)
 end
 
--- This function builds the input
+-- This function builds the input for the Learning Client. It includes all of the important variables of the game state
 function buildDataMapForServer()
 	local data = {}
 	-- For each player, gather everything we can about their states
@@ -226,6 +233,7 @@ function dump(o)
 	end
 end
 
+-- This method parses the response from the Learning Server into button presses.
 function parse_server_response_into_inputs(resp)
 	local r = {}
 	local tokens = split(resp, ",")
@@ -241,8 +249,11 @@ function parse_server_response_into_inputs(resp)
 	print("WE GOT A RESPONSE FROM THE SERVER WITHOUT AN ACTION! SOMETHING IS WRONG!")
 end
 
+-- This method applies the button presses to the game
 function do_button_presses(inputs)
+	dump(inputs)
 	if #inputs > 0 then
+		dump(inputs[1])
 		joypad.set(inputs[1], 1);
 		if #inputs == 2 then
 			joypad.setanalog(inputs[2], 1);
@@ -254,6 +265,7 @@ function do_button_presses(inputs)
 	end
 end
 
+-- Main scripting loop
 while true do
 	-- We are resetting the joystick for every frame. Unlike buttons, bizhawk does not reset
 	-- the joystick back to neutral after this frame
@@ -267,6 +279,8 @@ while true do
 	-- We need to parse the string into a lua table and feed it into Bizhawk as inputs.
 	local inputs = parse_server_response_into_inputs(resp)
 	do_button_presses(inputs)
+	dumpPlayerInfo(1)
 
+	-- Do the next frame (and pray things don't break)
 	emu.frameadvance();
 end

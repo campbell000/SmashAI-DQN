@@ -1,9 +1,9 @@
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
-NOTHING_PENALTY = 0.001
+NOTHING_REWARD = 0.000 # Incentivize it to NOT die
 class Rewarder:
 
-    def __init__(self, life_multiplier=100, damage_multiplier=10):
+    def __init__(self, life_multiplier=1, damage_multiplier=0.001):
         self.life_multiplier = life_multiplier
         self.damage_multiplier = damage_multiplier
 
@@ -33,9 +33,9 @@ class Rewarder:
         reward += (damage_reward * self.damage_multiplier)
         reward += (death_reward * self.life_multiplier)
 
-        # THIS GIVES THE BOT A LITTLE BIT OF MOTIVATION TO DO SOMETHING
+        # THIS GIVES THE BOT A LITTLE BIT OF MOTIVATION TO STAY ALIVE
         if reward == 0 and (damage_dealt == 0 and damage_taken == 0):
-            reward -= NOTHING_PENALTY
+            reward += NOTHING_REWARD
 
         if for_current_verbose:
             print("REWARDS FOR CURRENT experience: ")
@@ -46,6 +46,14 @@ class Rewarder:
             print("TOTAL REWARD: "+str(reward))
 
         return reward
+
+    def bot_killed_opponent(self, experience):
+        prev = experience[0]
+        current = experience[1]
+        return self.state_is_death(current["2state"]) and not self.state_is_death(prev["2state"])
+
+    def opponent_killed_bot(self, experience):
+        return self.is_terminal(experience)
 
     def is_terminal(self, experience):
         prev = experience[0]

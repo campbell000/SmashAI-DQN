@@ -4,24 +4,51 @@ from collections import deque
 import random
 from reward import Rewarder
 from evaluator import Evaluator
-import ast
+from nn import NeuralNetwork
+import os
+import uuid
 
-LEARNING_RATE = 0.001
-GAMMA = 0.9
-EPSILON = 0.1
-NUM_HIDDEN_UNITS = 512
+LEARNING_RATE = 0.0001
+NUM_HIDDEN_UNITS = 128
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
-OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 60000
-FUTURE_REWARD_DISCOUNT = 0.99  # decay rate of past observations
-OBSERVATION_STEPS = 50000  # time steps to observe before training
-EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
+OUTPUT_LENGTH = 44 # taken from actions taken from gameConstants.lua
+EXPERIENCE_BUFFER_SIZE = 50000
+FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
+OBSERVATION_STEPS = 10000  # time steps to observe before training
+EXPLORE_STEPS = 2000000  # frames over which to anneal epsilon
 INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
 FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
 MINI_BATCH_SIZE = 20  # size of mini batches
+NUM_STEPS_FOR_TARGET_NETWORK = 2000
+STATUS_REPORT_INTERVAL = 10000
+ACTION_REPORT_INTERVAL = 500
+SAVED_ITERATIONS = 100000
+LOSS_ITERVAL = 1000
 
+"""
+LEARNING_RATE = 0.001
+NUM_HIDDEN_UNITS = 128
+NUM_HIDDEN_LAYERS = 2
+NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
+INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
+OUTPUT_LENGTH = 44 # taken from actions taken from gameConstants.lua
+EXPERIENCE_BUFFER_SIZE = 50000
+FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
+OBSERVATION_STEPS = 40000  # time steps to observe before training
+EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
+INITIAL_RANDOM_ACTION_PROB = 1  # starting chance of an action being random
+FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
+MINI_BATCH_SIZE = 20  # size of mini batches
+NUM_STEPS_FOR_TARGET_NETWORK = 2000
+STATUS_REPORT_INTERVAL = 10000
+ACTION_REPORT_INTERVAL = 500
+SAVED_ITERATIONS = 100000
+"""
+
+MAIN_NETWORK = "main"
+TRAIN_NETWORK = "TRAIN"
 
 class SSB_DQN:
     """
@@ -29,17 +56,25 @@ class SSB_DQN:
     In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
     """
 
-    def __init__(self, verbose=False):
-        self.model = self.build_model()
+    def __init__(self, session, verbose=False):
         self.rewarder = Rewarder()
         self.experiences = deque()
         self.prev_state = None
         self.prev_action = None
         self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
         self.verbose = verbose
-        self.evaluator = Evaluator()
+        self.evaluator = Evaluator(self.rewarder)
         self.print_once_map = {}
         self.num_iterations = 0
+        self.model = NeuralNetwork(MAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
+        self.sess = session
+        self.sess.run(tf.global_variables_initializer())
+        self.saver = tf.train.Saver()
+        self.saved_network_id = str(uuid.uuid4())
+        #self.saver = tf.train.import_meta_graph("./ac48aea8-8f33-4054-a700-3a23a331eda7-1000000.meta")
+        #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
+        self.current_dir = os.path.dirname(os.path.realpath(__file__))
 
     def set_verbose(self, v):
         self.verbose = v
@@ -62,6 +97,7 @@ class SSB_DQN:
     # Given a state, gets an action. Optionally, it also trains the Q-network
     def get_prediction(self, current_state, do_train):
         self.num_iterations += 1
+        self.print_once("started", "Got connection, started training")
 
         # if we have no previous states, then generate a random action and add it to our replay database.
         action = None
@@ -82,8 +118,7 @@ class SSB_DQN:
 
             # Only train when we are done making our initial observations
             if len(self.experiences) > OBSERVATION_STEPS and do_train:
-                self.print_once("a", "Started Training!")
-                self.log("Training now because we have "+str(len(self.experiences))+" experiences")
+                self.print_once("started_training", "Training now because we have "+str(len(self.experiences))+" experiences")
                 self.train()
             else:
                 self.log("Still not training...only gathering data at "+str(len(self.experiences)))
@@ -91,10 +126,22 @@ class SSB_DQN:
             # get the next action based on a batch of samples in our replay DB
             action = self.choose_next_action(current_state)
 
+            # Record the KO count for the current episode
+            self.evaluator.add_kill_reward_state(new_experience)
+
         self.log("Chose action:\n"+str(action))
 
-        if self.num_iterations % 50000 == 0:
+        # Print Status Report
+        if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
             self.status_report()
+
+        # Print Action chosen, just so we get a better idea of what's happening
+        if self.num_iterations % ACTION_REPORT_INTERVAL == 0:
+            print("CHosen action: \n"+str(action))
+
+        # Save the network every N iterations
+        if self.num_iterations % SAVED_ITERATIONS == 0:
+            self.save_network()
 
         # Adjust the change of chosing a random action
         self.adjust_random_probability()
@@ -109,6 +156,9 @@ class SSB_DQN:
         print("Random Prob: "+str(self.current_random_action_prob))
         print("NUM ITERATIONS: "+str(self.num_iterations))
 
+    def save_network(self):
+        path = self.current_dir + "/" + self.saved_network_id
+        self.saver.save(self.sess, path, global_step=self.num_iterations)
 
     def adjust_random_probability(self):
         if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
@@ -132,6 +182,7 @@ class SSB_DQN:
             output = m["output"].eval(feed_dict={m["x"]: [tf_current_state]})[0]
 
             # Convert the output into a one hot. The one hot index should be the index with the highest output
+            self.log("Q-Values for current action:\n"+str(output))
             action_index = np.argmax(output)
             final_action[action_index] = 1
 
@@ -190,54 +241,9 @@ class SSB_DQN:
             tf_data = tf_data + convert_state_to_vector(data, i)
         return tf_data
 
-    # This method builds and returns the model for estimating Q values
-    def build_model(self):
-        x = tf.placeholder(tf.float32,shape=[None, INPUT_LENGTH])
-        action = tf.placeholder(tf.float32, [None, OUTPUT_LENGTH])
-        target = tf.placeholder(tf.float32, [None])
-
-        def weight_var(shape):
-            initial = tf.truncated_normal(shape, stddev=0.01)
-            return tf.Variable(initial)
-
-        def bias_var(shape):
-            initial = tf.constant(0.01, shape=shape)
-            return tf.Variable(initial)
-
-        # Create the first hidden layer
-        W1 = weight_var([INPUT_LENGTH, NUM_HIDDEN_UNITS])
-        b1 = bias_var([NUM_HIDDEN_UNITS])
-        layer_1 = tf.nn.relu(tf.add(tf.matmul(x, W1), b1))
-
-        # Create the second hidden layer
-        W2 = weight_var([NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS])
-        b2 = bias_var([NUM_HIDDEN_UNITS])
-        layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, W2), b2))
-
-        # Create the second hidden layer
-        W3 = weight_var([NUM_HIDDEN_UNITS, OUTPUT_LENGTH])
-        b3 = bias_var([OUTPUT_LENGTH])
-        out = tf.add(tf.matmul(layer_2, W3), b3)
-
-        # loss/training steps
-        loss = tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=action)
-        train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
-
-        sess = tf.InteractiveSession()
-        sess.run(tf.initialize_all_variables())
-
-        return {
-            "x" : x,
-            "action" : action,
-            "target" : target,
-            "output" : out,
-            "loss" : loss,
-            "train" : train,
-            "sess" : sess
-        }
-
     def train(self):
         m = self.model
+        t = self.target_model
         # Get a mini_batch from the experience replay buffer per DQN
         mini_batch = self.get_sample_batch()
 
@@ -248,8 +254,8 @@ class SSB_DQN:
         current_states = [self.transform_client_data_for_tensorflow(x[1]) for x in mini_batch]
         agents_expected_reward = []
 
-        # Get the expected reward per action from the Q-Network
-        agents_reward_per_action = m["output"].eval(feed_dict={m["x"]: current_states})
+        # Get the expected reward per action from the TARGET Q-Network
+        agents_reward_per_action = t["output"].eval(feed_dict={t["x"]: current_states})
         for i in range(len(mini_batch)):
             curr_experience = mini_batch[i]
 
@@ -266,3 +272,38 @@ class SSB_DQN:
             m["action"] : previous_actions,
             m["target"] : agents_expected_reward
         })
+
+        if self.num_iterations % LOSS_ITERVAL:
+            loss = m["sess"].run(m["loss"], feed_dict={
+                m["x"] : previous_states,
+                m["action"] : previous_actions,
+                m["target"] : agents_expected_reward
+            })
+            self.evaluator.record_loss(loss)
+
+
+        # Every N iterations, update the training network with the model of the "real" network
+        if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:
+            copy_ops = self.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
+            self.sess.run(copy_ops)
+
+    def get_copy_var_ops(self, dest_name, src_name):
+        """Creates TF operations that copy weights from `src_scope` to `dest_scope`
+        Args:
+            dest_scope_name (str): Destination weights (copy to)
+            src_scope_name (str): Source weight (copy from)
+        Returns:
+            List[tf.Operation]: Update operations are created and returned
+        """
+        # Copy variables src_scope to dest_scope
+        op_holder = []
+
+        src_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=src_name)
+        dest_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=dest_name)
+
+        for src_var, dest_var in zip(src_vars, dest_vars):
+            op_holder.append(dest_var.assign(src_var.value()))
+
+        return op_holder

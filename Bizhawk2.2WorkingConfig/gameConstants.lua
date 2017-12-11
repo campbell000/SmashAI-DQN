@@ -1,5 +1,5 @@
 -- This file contains game related constants. The majority of these constants were taken
--- from https://github.com/Isotarge/ScriptHawk/blob/master/games/smash64.lua
+-- from https://github.com/Isotarge/ScriptHawk/blob/master/games/smash64.lua. Shoutouts to that dude.
 N64 = {
 	RDRAMBase = 0x80000000;
 	RDRAMSize = 0x800000; -- Halved with no expansion pak, can be read from 0x80000318
@@ -54,8 +54,11 @@ INPUTS.UP = {{}, {["Y Axis"] = 127}}
 INPUTS.HALF_DOWN = {{}, {["Y Axis"] = -40}}
 INPUTS.DOWN = {{}, {["Y Axis"] = -127}}
 
--- DO NOT CHANGE THIS ORDERING
+-- DO NOT CHANGE THIS ORDERING. We expect the Learning server to send a one-hot encoding, with a "1" corresponding to
+-- the chosen action. We use the index of the "1" element to get the corresponding input in this array. So DO NOT CHANGE
+-- IT unless you NEED TO. Note that it will make any saved networks on the server wrong.
 INPUT_ORDER = {
+	INPUTS.NOTHING,
 	INPUTS.ATK,
 	INPUTS.ATK_HALF_RIGHT,
 	INPUTS.ATK_RIGHT,
