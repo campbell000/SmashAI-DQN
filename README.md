@@ -3,7 +3,10 @@ This project includes a working copy of Bizhawk (the most recent at this point i
 
 ## IMPORTANT INFO FOR CS5984 INSTRUCTORS AND GRADERS:
 This project contains many files: in addition to the learning/DQN code I wrote, I also uploaded the emulator and all of the libraries I used to this repo to make it easy for other people to set up this configuration (it was not easy). **For Grading Purposes, here are links to all of the contributions that I made for this project**:
-- Youtube
+- Youtube Link: https://www.youtube.com/watch?v=74TzP-3fQR8&feature=youtu.be
+- Source Code of Interest:
+    - Test
+    - Test
 
 
 ## Essential Configuration
