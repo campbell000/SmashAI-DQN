@@ -6,7 +6,10 @@ This project contains many files: in addition to the learning/DQN code I wrote, 
 - Youtube Link: https://www.youtube.com/watch?v=74TzP-3fQR8&feature=youtu.be
 - Source Code that I wrote:
     - All files in the "python" directory. This is where the http server, DQN algorithm, and Tensorflow components are.
-    - 
+    - The following files in the "Bizhawk2.2WorkingConfig" directory:
+        - ssb.lua: This is the main script for extracting game state values responding to the tensorflow-server's messages
+        - tensorflow-client.lua: This contains the main functions for communicating with the tensorflow server.
+        - gameConstants.lua: File that contains important constants. Note that many of them (but not all) come from here: https://github.com/Isotarge/ScriptHawk
 
 
 ## Essential Configuration
