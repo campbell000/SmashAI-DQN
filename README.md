@@ -4,9 +4,9 @@ This project includes a working copy of Bizhawk (the most recent at this point i
 ## IMPORTANT INFO FOR CS5984 INSTRUCTORS AND GRADERS:
 This project contains many files: in addition to the learning/DQN code I wrote, I also uploaded the emulator and all of the libraries I used to this repo to make it easy for other people to set up this configuration (it was not easy). **For Grading Purposes, here are links to all of the contributions that I made for this project**:
 - Youtube Link: https://www.youtube.com/watch?v=74TzP-3fQR8&feature=youtu.be
-- Source Code of Interest:
-    - Test
-    - Test
+- Source Code that I wrote:
+    - All files in the "python" directory. This is where the http server, DQN algorithm, and Tensorflow components are.
+    - 
 
 
 ## Essential Configuration
@@ -26,3 +26,4 @@ For now, we have to use the "faster, less reliable (memory leaks!)" version of L
 # Credits
 - Useful post for getting started: https://stackoverflow.com/questions/33428382/add-luasocket-to-program-bizhawk-shipped-with-own-lua-environment
 - Good example of Lua+Bizhawk+Tensorflow in action: https://github.com/rameshvarun/NeuralKart. The author was also very helpful in answering some questions I had, and gave me the tip that his code only worked with Bizhawk 1.13.1. I eventually learned that later versions switched the Lua implementations, which led me to discover that switching the lua version eliminated the "dynamic libraries not supported" error.
+- Very useful repo that provided me with memory addresses and functions for extracting the important game state values from memory: https://github.com/Isotarge/ScriptHawk
