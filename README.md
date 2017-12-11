@@ -1,6 +1,11 @@
 # DeepLearningProject
 This project includes a working copy of Bizhawk (the most recent at this point in time) and a working integration of luasockets. For whatever reason, this is difficult to do. So for convenience, I am uploading the entire bizhawk binary.
 
+## IMPORTANT INFO FOR CS5984 INSTRUCTORS AND GRADERS:
+This project contains many files: in addition to the learning/DQN code I wrote, I also uploaded the emulator and all of the libraries I used to this repo to make it easy for other people to set up this configuration (it was not easy). **For Grading Purposes, here are links to all of the contributions that I made for this project**:
+- Youtube
+
+
 ## Essential Configuration
 For now, we have to use the "faster, less reliable (memory leaks!)" version of Lua in Bizhawk. So, to configire Bizhawk and test that it's working, do the following:
 - Load up the included PONG.V64 game (it's homebrew, so no need to arrest me).
