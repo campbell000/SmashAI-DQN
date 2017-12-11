@@ -1,8 +1,7 @@
 # This file is the server that listens to requests from Bizhawk / Lua to train (and retrieve predictions for) the
-# Super Smash Bros bot.
+# Super Smash Bros bot. In the diagrams, it is the "Learning Server"
 
 PORT = 8081
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
 from cgi import parse_qs, escape

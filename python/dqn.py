@@ -5,23 +5,47 @@ import random
 from reward import Rewarder
 from evaluator import Evaluator
 from nn import NeuralNetwork
-import ast
+import os
+import uuid
 
-LEARNING_RATE = 0.001
-NUM_HIDDEN_UNITS = 256
+LEARNING_RATE = 0.0001
+NUM_HIDDEN_UNITS = 128
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
-OUTPUT_LENGTH = 43 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 60000
-FUTURE_REWARD_DISCOUNT = 0.90  # decay rate of past observations
-OBSERVATION_STEPS = 50000  # time steps to observe before training
+OUTPUT_LENGTH = 44 # taken from actions taken from gameConstants.lua
+EXPERIENCE_BUFFER_SIZE = 50000
+FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
+OBSERVATION_STEPS = 10000  # time steps to observe before training
+EXPLORE_STEPS = 2000000  # frames over which to anneal epsilon
+INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
+FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
+MINI_BATCH_SIZE = 20  # size of mini batches
+NUM_STEPS_FOR_TARGET_NETWORK = 2000
+STATUS_REPORT_INTERVAL = 10000
+ACTION_REPORT_INTERVAL = 500
+SAVED_ITERATIONS = 100000
+LOSS_ITERVAL = 1000
+
+"""
+LEARNING_RATE = 0.001
+NUM_HIDDEN_UNITS = 128
+NUM_HIDDEN_LAYERS = 2
+NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
+INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
+OUTPUT_LENGTH = 44 # taken from actions taken from gameConstants.lua
+EXPERIENCE_BUFFER_SIZE = 50000
+FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
+OBSERVATION_STEPS = 40000  # time steps to observe before training
 EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
 INITIAL_RANDOM_ACTION_PROB = 1  # starting chance of an action being random
 FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
 MINI_BATCH_SIZE = 20  # size of mini batches
 NUM_STEPS_FOR_TARGET_NETWORK = 2000
 STATUS_REPORT_INTERVAL = 10000
+ACTION_REPORT_INTERVAL = 500
+SAVED_ITERATIONS = 100000
+"""
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
@@ -39,13 +63,18 @@ class SSB_DQN:
         self.prev_action = None
         self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
         self.verbose = verbose
-        self.evaluator = Evaluator()
+        self.evaluator = Evaluator(self.rewarder)
         self.print_once_map = {}
         self.num_iterations = 0
         self.model = NeuralNetwork(MAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
         self.target_model = NeuralNetwork(TRAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, LEARNING_RATE).build_model()
         self.sess = session
         self.sess.run(tf.global_variables_initializer())
+        self.saver = tf.train.Saver()
+        self.saved_network_id = str(uuid.uuid4())
+        #self.saver = tf.train.import_meta_graph("./ac48aea8-8f33-4054-a700-3a23a331eda7-1000000.meta")
+        #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
+        self.current_dir = os.path.dirname(os.path.realpath(__file__))
 
     def set_verbose(self, v):
         self.verbose = v
@@ -97,10 +126,22 @@ class SSB_DQN:
             # get the next action based on a batch of samples in our replay DB
             action = self.choose_next_action(current_state)
 
+            # Record the KO count for the current episode
+            self.evaluator.add_kill_reward_state(new_experience)
+
         self.log("Chose action:\n"+str(action))
 
+        # Print Status Report
         if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
             self.status_report()
+
+        # Print Action chosen, just so we get a better idea of what's happening
+        if self.num_iterations % ACTION_REPORT_INTERVAL == 0:
+            print("CHosen action: \n"+str(action))
+
+        # Save the network every N iterations
+        if self.num_iterations % SAVED_ITERATIONS == 0:
+            self.save_network()
 
         # Adjust the change of chosing a random action
         self.adjust_random_probability()
@@ -115,6 +156,9 @@ class SSB_DQN:
         print("Random Prob: "+str(self.current_random_action_prob))
         print("NUM ITERATIONS: "+str(self.num_iterations))
 
+    def save_network(self):
+        path = self.current_dir + "/" + self.saved_network_id
+        self.saver.save(self.sess, path, global_step=self.num_iterations)
 
     def adjust_random_probability(self):
         if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
@@ -138,6 +182,7 @@ class SSB_DQN:
             output = m["output"].eval(feed_dict={m["x"]: [tf_current_state]})[0]
 
             # Convert the output into a one hot. The one hot index should be the index with the highest output
+            self.log("Q-Values for current action:\n"+str(output))
             action_index = np.argmax(output)
             final_action[action_index] = 1
 
@@ -228,11 +273,17 @@ class SSB_DQN:
             m["target"] : agents_expected_reward
         })
 
+        if self.num_iterations % LOSS_ITERVAL:
+            loss = m["sess"].run(m["loss"], feed_dict={
+                m["x"] : previous_states,
+                m["action"] : previous_actions,
+                m["target"] : agents_expected_reward
+            })
+            self.evaluator.record_loss(loss)
+
+
         # Every N iterations, update the training network with the model of the "real" network
         if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:
-            if self.num_iterations % (NUM_STEPS_FOR_TARGET_NETWORK * 10) == 0:
-                print("Updated target network 100 times more!")
-
             copy_ops = self.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
             self.sess.run(copy_ops)
 

@@ -45,12 +45,14 @@ class NeuralNetwork:
             out = tf.add(tf.matmul(layer_2, W3), b3)
 
             # loss/training steps
-            loss = tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=action)
+            readout_action = tf.reduce_sum(tf.multiply(out, action), reduction_indices=1)
+            loss = tf.reduce_mean(tf.square(target- readout_action))
             train = tf.train.AdamOptimizer(self.LEARNING_RATE).minimize(loss)
 
             return {
                 "x" : x,
                 "action" : action,
+                "readout_action" : readout_action,
                 "target" : target,
                 "output" : out,
                 "loss" : loss,
