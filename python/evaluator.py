@@ -1,4 +1,6 @@
 import os
+
+# This class is responsible for printing metrics to a file as the bot is being trained.
 class Evaluator:
     def __init__(self, rewarder, buffer_size=50000 ):
         self.buffer = buffer_size

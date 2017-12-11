@@ -4,6 +4,7 @@ from collections import deque
 import random
 import ast
 
+# This class is responsible for building a Neural Network used to produce Q-Values
 class NeuralNetwork:
 
     def __init__(self, name, session, input_length, output_length, num_hidden_units, learning_rate):

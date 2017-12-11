@@ -1,3 +1,5 @@
+# This class is responsible for the majority of our implementation of the DQN algorithm
+
 import numpy as np
 import tensorflow as tf
 from collections import deque
@@ -26,26 +28,6 @@ STATUS_REPORT_INTERVAL = 10000
 ACTION_REPORT_INTERVAL = 500
 SAVED_ITERATIONS = 100000
 LOSS_ITERVAL = 1000
-
-"""
-LEARNING_RATE = 0.001
-NUM_HIDDEN_UNITS = 128
-NUM_HIDDEN_LAYERS = 2
-NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
-INPUT_LENGTH = (NUM_POSSIBLE_STATES + 12) * 2 # taken from number of non-state params in client data, multiplied by 2 players
-OUTPUT_LENGTH = 44 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 50000
-FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
-OBSERVATION_STEPS = 40000  # time steps to observe before training
-EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
-INITIAL_RANDOM_ACTION_PROB = 1  # starting chance of an action being random
-FINAL_RANDOM_ACTION_PROB = 0.05  # final chance of an action being random
-MINI_BATCH_SIZE = 20  # size of mini batches
-NUM_STEPS_FOR_TARGET_NETWORK = 2000
-STATUS_REPORT_INTERVAL = 10000
-ACTION_REPORT_INTERVAL = 500
-SAVED_ITERATIONS = 100000
-"""
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
@@ -76,6 +58,7 @@ class SSB_DQN:
         #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
 
+    # Set to true for more output while the training is ocurring.
     def set_verbose(self, v):
         self.verbose = v
 
@@ -83,12 +66,14 @@ class SSB_DQN:
         if self.verbose:
             print(s)
 
+    # Prints output to the screen one time
     def print_once(self, key, msg):
         if key not in self.print_once_map:
             self.print_once_map[key] = 0
             print(msg)
 
-    # experiences consist of two elements. The first element is previous data, the second is current data
+    # Adds an experience to the Experience DB. Experiences consist of two elements. The first element is previous data,
+    # the second is current data
     def add_experience(self, experience):
         self.experiences.append(experience)
         if len(self.experiences) >= EXPERIENCE_BUFFER_SIZE:
@@ -151,23 +136,29 @@ class SSB_DQN:
         self.prev_action = action
         return action
 
+    # Prints a status report to the screen
     def status_report(self):
         print("STATUS REPORT!")
         print("Random Prob: "+str(self.current_random_action_prob))
         print("NUM ITERATIONS: "+str(self.num_iterations))
 
+    # Saves the network (tensorflow variables)
     def save_network(self):
         path = self.current_dir + "/" + self.saved_network_id
         self.saver.save(self.sess, path, global_step=self.num_iterations)
 
+    # This method adjusts the random probability of picking an action to anneal over time.
     def adjust_random_probability(self):
         if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
             self.current_random_action_prob -= (INITIAL_RANDOM_ACTION_PROB - FINAL_RANDOM_ACTION_PROB) / EXPLORE_STEPS
 
+    # This method returns an action to execute for the current state. It will either pick a random action, or an action
+    # based on the output of the NN.
     def choose_next_action(self, current_state):
-        # Transform the map of string and categorical data into strictly numerical data
         m = self.model
         self.log("Choosing action based on current random probability: "+str(self.current_random_action_prob))
+
+        # Based on self.current_random_action_prob, choose a random action OR chose an action based on the NN.
         if random.random() <= self.current_random_action_prob:
             self.log("Chose randomly")
             r = random.randint(0,(OUTPUT_LENGTH - 1))
@@ -175,8 +166,8 @@ class SSB_DQN:
             action[r] = 1
             return action
         else:
+            # choose an action given our current state, using the output of the NN
             self.log("Chose NOT randomly")
-            # choose an action given our last state
             final_action = [0] * OUTPUT_LENGTH
             tf_current_state = self.transform_client_data_for_tensorflow(current_state)
             output = m["output"].eval(feed_dict={m["x"]: [tf_current_state]})[0]
@@ -190,6 +181,7 @@ class SSB_DQN:
             self.evaluator.add_q_value(np.max(output))
             return final_action
 
+    # This method retrieves a sample batch of experiences from the experience replay DB
     def get_sample_batch(self):
         num_samples = MINI_BATCH_SIZE
         num_total_experiences = len(self.experiences)
@@ -241,9 +233,11 @@ class SSB_DQN:
             tf_data = tf_data + convert_state_to_vector(data, i)
         return tf_data
 
+    # This function trains the NN that produces Q-values for every state/action pair.
     def train(self):
         m = self.model
         t = self.target_model
+
         # Get a mini_batch from the experience replay buffer per DQN
         mini_batch = self.get_sample_batch()
 
@@ -273,6 +267,7 @@ class SSB_DQN:
             m["target"] : agents_expected_reward
         })
 
+        # Print the loss to a file ever LOSS_INTERVAL number of iterations
         if self.num_iterations % LOSS_ITERVAL:
             loss = m["sess"].run(m["loss"], feed_dict={
                 m["x"] : previous_states,
@@ -280,7 +275,6 @@ class SSB_DQN:
                 m["target"] : agents_expected_reward
             })
             self.evaluator.record_loss(loss)
-
 
         # Every N iterations, update the training network with the model of the "real" network
         if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:

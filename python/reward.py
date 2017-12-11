@@ -1,3 +1,4 @@
+# This class is responsible for calculating the rewards for a previous state / current state pair.
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
 NOTHING_REWARD = 0.000 # Incentivize it to NOT die
@@ -7,13 +8,14 @@ class Rewarder:
         self.life_multiplier = life_multiplier
         self.damage_multiplier = damage_multiplier
 
+    # Returns true if the state represents a KO state
     def state_is_death(self, state):
         if state in DEATH_STATES:
             return True
         else:
             return False
 
-    # Assumes player 1 is the bot we want to train
+    # This method calculates the reward for an experience. It assumes that player 1 is the bot we want to train
     def calculate_reward(self, experience, for_current_verbose=False):
         prev = experience[0]
         current = experience[1]
@@ -47,14 +49,17 @@ class Rewarder:
 
         return reward
 
+    # This method returns true if the bot we're training gets KO'd
     def bot_killed_opponent(self, experience):
         prev = experience[0]
         current = experience[1]
         return self.state_is_death(current["2state"]) and not self.state_is_death(prev["2state"])
 
+    # This method returns true if the bot's opponent gets KO'd
     def opponent_killed_bot(self, experience):
         return self.is_terminal(experience)
 
+    # This method retrurns true if the current experience is a terminal state
     def is_terminal(self, experience):
         prev = experience[0]
         current = experience[1]
