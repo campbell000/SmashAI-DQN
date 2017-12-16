@@ -8,7 +8,7 @@ class Evaluator:
         self.current_kills=0
         self.rewarder = rewarder
         try:
-            os.remove("max_q_values.txt")
+            os.remove("average_q_values.txt")
         except:
             a = 1
 
@@ -30,7 +30,7 @@ class Evaluator:
             self.dump_buffer()
 
     def dump_buffer(self):
-        with open('max_q_values.txt', 'a') as file:
+        with open('average_q_values.txt', 'a') as file:
             for k in self.max_q_values:
                 file.write(str(k)+","+str(self.max_q_values[k])+"\n")
 
@@ -44,8 +44,3 @@ class Evaluator:
             with open('KOs_per_episode.txt', 'a') as file:
                 file.write(str(self.current_kills)+"\n")
             self.current_kills = 0
-
-    def record_loss(self, loss):
-        with open('loss.txt', 'a') as file:
-            file.write(str(loss)+"\n")
-

@@ -5,103 +5,120 @@ N64 = {
 	RDRAMSize = 0x800000; -- Halved with no expansion pak, can be read from 0x80000318
 }
 
--- Enumeration of all actions and their corresponding button presses. Note that we trimmed the number of grabs and shields
--- since there's no functional difference between half_right_sheild and right_shield. Plus, it makes the bot do too
--- many grabs, which screws up exploration/training
 INPUTS = {}
-INPUTS.NOTHING = {}
-INPUTS.ATK = {{A = "True" }}
-INPUTS.ATK_HALF_RIGHT = {{["A"] = "True" }, {["X Axis"] = 20}}
-INPUTS.ATK_RIGHT = {{["A"] = "True" }, {["X Axis"] = 127}}
-INPUTS.ATK_HALF_LEFT = {{["A"] = "True" }, {["X Axis"] = -20}}
-INPUTS.ATK_LEFT = {{["A"] = "True" }, {["X Axis"] = -127}}
-INPUTS.ATK_HALF_UP = {{["A"] = "True" }, {["Y Axis"] = 20}}
-INPUTS.ATK_UP = {{["A"] = "True" }, {["Y Axis"] = 256}}
-INPUTS.ATK_HALF_DOWN = {{["A"] = "True" }, {["Y Axis"] = -20}}
-INPUTS.ATK_DOWN = {{["A"] = "True" }, {["Y Axis"] = -127}}
-INPUTS.SPECIAL = {{["B"] = "True" }}
-INPUTS.SPECIAL_HALF_RIGHT = {{["B"] = "True" }, {["X Axis"] = 20}}
-INPUTS.SPECIAL_RIGHT = {{["B"] = "True" }, {["X Axis"] = 127}}
-INPUTS.SPECIAL_HALF_LEFT = {{["B"] = "True" }, {["X Axis"] = -20}}
-INPUTS.SPECIAL_LEFT = {{["B"] = "True" }, {["X Axis"] = -127}}
-INPUTS.SPECIAL_HALF_UP = {{["B"] = "True" }, {["Y Axis"] = 20}}
-INPUTS.SPECIAL_UP = {{["B"] = "True" }, {["Y Axis"] = 127}}
-INPUTS.SPECIAL_HALF_DOWN = {{["B"] = "True" }, {["Y Axis"] = -20}}
-INPUTS.SPECIAL_DOWN = {{["B"] = "True" }, {["Y Axis"] = -127}}
-INPUTS.JUMP = {{["C Right"] = "True" }}
-INPUTS.JUMP_HALF_RIGHT = {{["C Right"] = "True" }, {["X Axis"] = 20}}
-INPUTS.JUMP_RIGHT = {{["C Right"] = "True" }, {["X Axis"] = 127}}
-INPUTS.JUMP_HALF_LEFT = {{["C Right"] = "True" }, {["X Axis"] = -20}}
-INPUTS.JUMP_LEFT = {{["C Right"] = "True" }, {["X Axis"] = -127}}
-INPUTS.JUMP_HALF_UP = {{["C Right"] = "True" }, {["Y Axis"] = 20}}
-INPUTS.JUMP_UP = {{["C Right"] = "True" }, {["Y Axis"] = 127}}
-INPUTS.JUMP_HALF_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -20}}
-INPUTS.JUMP_DOWN = {{["C Right"] = "True" }, {["Y Axis"] = -127}}
-INPUTS.SHIELD = {{["Z"] = "True" }}
-INPUTS.SHIELD_RIGHT = {{["Z"] = "True" }, {["X Axis"] = 127}}
-INPUTS.SHIELD_LEFT = {{["Z"] = "True" }, {["X Axis"] = -127}}
-INPUTS.GRAB = {{["R"] = "True" }}
-INPUTS.GRAB_HALF_RIGHT = {{["R"] = "True" }, {["X Axis"] = 20}}
-INPUTS.GRAB_RIGHT = {{["R"] = "True" }, {["X Axis"] = 127}}
-INPUTS.GRAB_HALF_LEFT = {{["R"] = "True" }, {["X Axis"] = -20}}
-INPUTS.GRAB_LEFT = {{["R"] = "True" }, {["X Axis"] = -127}}
-INPUTS.HALF_RIGHT = {{}, {["X Axis"] = 40}}
-INPUTS.RIGHT = {{}, {["X Axis"] = 127}}
-INPUTS.HALF_LEFT = {{}, {["X Axis"] = -40}}
-INPUTS.LEFT = {{}, {["X Axis"] = -127}}
-INPUTS.HALF_UP = {{}, {["Y Axis"] = 40}}
-INPUTS.UP = {{}, {["Y Axis"] = 127}}
-INPUTS.HALF_DOWN = {{}, {["Y Axis"] = -40}}
-INPUTS.DOWN = {{}, {["Y Axis"] = -127}}
+INPUTS.RIGHT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
+INPUTS.RIGHT_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
+INPUTS.RIGHT_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
+INPUTS.RIGHT_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = 127}}
+INPUTS.RIGHT_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
+INPUTS.RIGHT_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+INPUTS.RIGHT_UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
+INPUTS.LEFT_DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
+INPUTS.LEFT_UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
+INPUTS.CENTER_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+INPUTS.DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
+INPUTS.RIGHT_DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
+INPUTS.LEFT_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+INPUTS.UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 
 -- DO NOT CHANGE THIS ORDERING. We expect the Learning server to send a one-hot encoding, with a "1" corresponding to
 -- the chosen action. We use the index of the "1" element to get the corresponding input in this array. So DO NOT CHANGE
 -- IT unless you NEED TO. Note that it will make any saved networks on the server wrong.
 INPUT_ORDER = {
-	INPUTS.NOTHING,
-	INPUTS.ATK,
-	INPUTS.ATK_HALF_RIGHT,
-	INPUTS.ATK_RIGHT,
-	INPUTS.ATK_HALF_LEFT,
-	INPUTS.ATK_LEFT,
-	INPUTS.ATK_HALF_UP,
-	INPUTS.ATK_UP,
-	INPUTS.ATK_HALF_DOWN,
-	INPUTS.ATK_DOWN,
-	INPUTS.SPECIAL,
-	INPUTS.SPECIAL_HALF_RIGHT,
-	INPUTS.SPECIAL_RIGHT,
-	INPUTS.SPECIAL_HALF_LEFT,
-	INPUTS.SPECIAL_LEFT,
-	INPUTS.SPECIAL_HALF_UP,
-	INPUTS.SPECIAL_UP,
-	INPUTS.SPECIAL_HALF_DOWN,
-	INPUTS.SPECIAL_DOWN,
-	INPUTS.JUMP,
-	INPUTS.JUMP_HALF_RIGHT,
-	INPUTS.JUMP_RIGHT,
-	INPUTS.JUMP_HALF_LEFT,
-	INPUTS.JUMP_LEFT,
-	INPUTS.JUMP_HALF_UP,
-	INPUTS.JUMP_UP,
-	INPUTS.JUMP_HALF_DOWN,
-	INPUTS.JUMP_DOWN,
-	INPUTS.SHIELD,
-	INPUTS.SHIELD_RIGHT,
-	INPUTS.SHIELD_LEFT,
-	INPUTS.GRAB,
-	INPUTS.GRAB_HALF_RIGHT,
-	INPUTS.GRAB_RIGHT,
-	INPUTS.GRAB_HALF_LEFT,
-	INPUTS.GRAB_LEFT,
-	INPUTS.HALF_RIGHT,
-	INPUTS.RIGHT,
-	INPUTS.HALF_LEFT,
-	INPUTS.LEFT,
-	INPUTS.HALF_UP,
-	INPUTS.UP,
-	INPUTS.HALF_DOWN,
-	INPUTS.DOWN,
+	INPUTS.RIGHT_SPECIAL,
+	INPUTS.RIGHT_UP_SPECIAL,
+	INPUTS.LEFT_DOWN_SPECIAL,
+	INPUTS.LEFT_UP_SPECIAL,
+	INPUTS.CENTER_SPECIAL,
+	INPUTS.DOWN_SPECIAL,
+	INPUTS.RIGHT_DOWN_SPECIAL,
+	INPUTS.LEFT_SPECIAL,
+	INPUTS.UP_SPECIAL,
+	INPUTS.RIGHT_SHEILD,
+	INPUTS.RIGHT_UP_SHEILD,
+	INPUTS.LEFT_DOWN_SHEILD,
+	INPUTS.LEFT_UP_SHEILD,
+	INPUTS.CENTER_SHEILD,
+	INPUTS.DOWN_SHEILD,
+	INPUTS.RIGHT_DOWN_SHEILD,
+	INPUTS.LEFT_SHEILD,
+	INPUTS.UP_SHEILD,
+	INPUTS.RIGHT_JUMP,
+	INPUTS.RIGHT_UP_JUMP,
+	INPUTS.LEFT_DOWN_JUMP,
+	INPUTS.LEFT_UP_JUMP,
+	INPUTS.CENTER_JUMP,
+	INPUTS.DOWN_JUMP,
+	INPUTS.RIGHT_DOWN_JUMP,
+	INPUTS.LEFT_JUMP,
+	INPUTS.UP_JUMP,
+	INPUTS.RIGHT_NOTHING,
+	INPUTS.RIGHT_UP_NOTHING,
+	INPUTS.LEFT_DOWN_NOTHING,
+	INPUTS.LEFT_UP_NOTHING,
+	INPUTS.CENTER_NOTHING,
+	INPUTS.DOWN_NOTHING,
+	INPUTS.RIGHT_DOWN_NOTHING,
+	INPUTS.LEFT_NOTHING,
+	INPUTS.UP_NOTHING,
+	INPUTS.RIGHT_GRAB,
+	INPUTS.RIGHT_UP_GRAB,
+	INPUTS.LEFT_DOWN_GRAB,
+	INPUTS.LEFT_UP_GRAB,
+	INPUTS.CENTER_GRAB,
+	INPUTS.DOWN_GRAB,
+	INPUTS.RIGHT_DOWN_GRAB,
+	INPUTS.LEFT_GRAB,
+	INPUTS.UP_GRAB,
+	INPUTS.RIGHT_ATTACK,
+	INPUTS.RIGHT_UP_ATTACK,
+	INPUTS.LEFT_DOWN_ATTACK,
+	INPUTS.LEFT_UP_ATTACK,
+	INPUTS.CENTER_ATTACK,
+	INPUTS.DOWN_ATTACK,
+	INPUTS.RIGHT_DOWN_ATTACK,
+	INPUTS.LEFT_ATTACK,
+	INPUTS.UP_ATTACK,
 }
 
 

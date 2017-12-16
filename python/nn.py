@@ -7,10 +7,11 @@ import ast
 # This class is responsible for building a Neural Network used to produce Q-Values
 class NeuralNetwork:
 
-    def __init__(self, name, session, input_length, output_length, num_hidden_units, learning_rate):
+    def __init__(self, name, session, input_length, output_length, num_hidden_units, num_hidden_units_2, learning_rate):
         self.INPUT_LENGTH = input_length
         self.OUTPUT_LENGTH = output_length
         self.NUM_HIDDEN_UNITS = num_hidden_units
+        self.NUM_HIDDEN_UNITS_SECOND_LAYER = num_hidden_units_2
         self.LEARNING_RATE = learning_rate
         self.name = name
         self.session = session
@@ -36,12 +37,12 @@ class NeuralNetwork:
             layer_1 = tf.nn.relu(tf.add(tf.matmul(x, W1), b1))
 
             # Create the second hidden layer
-            W2 = weight_var([self.NUM_HIDDEN_UNITS, self.NUM_HIDDEN_UNITS])
-            b2 = bias_var([self.NUM_HIDDEN_UNITS])
+            W2 = weight_var([self.NUM_HIDDEN_UNITS, self.NUM_HIDDEN_UNITS_SECOND_LAYER])
+            b2 = bias_var([self.NUM_HIDDEN_UNITS_SECOND_LAYER])
             layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, W2), b2))
 
             # Create the second hidden layer
-            W3 = weight_var([self.NUM_HIDDEN_UNITS, self.OUTPUT_LENGTH])
+            W3 = weight_var([self.NUM_HIDDEN_UNITS_SECOND_LAYER, self.OUTPUT_LENGTH])
             b3 = bias_var([self.OUTPUT_LENGTH])
             out = tf.add(tf.matmul(layer_2, W3), b3)
 

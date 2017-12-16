@@ -3,12 +3,24 @@
 -- This only works for the USA rom
 require "global";
 require "gameConstants";
+require "utils";
+require "list"
 local TF_CLIENT = require("tensorflow-client")
 local X = "X Axis"
 local Y = "Y Axis"
+local tfServerSampleIteration = 0
+local previousStateBuffer = List.newList()
+local currentAction = INPUTS.CENTER_NOTHING
 Game = {}
 
-local previous_states = {}
+-- CONSTANTS
+-- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
+-- number is > 1, this means that the bot will HOLD down the current action N number of frames
+local TF_SERVER_SAMPLE_SKIP_RATE = 2
+
+-- This variable is the number of game states we are sending to the tensorflow server. Note that the tensorflow server
+-- needs to know this variable ahead of time to train the network.
+local GAME_STATE_BUFFER_SIZE = 4
 
 -- This function returns the player
 function Game.getPlayer(player)
@@ -157,6 +169,13 @@ function Game.getDamage(player)
 	return mainmemory.read_s32_be(damageAddr)
 end
 
+function Game.isInAir(player)
+	local playerActor = Game.getPlayer(player);
+	if isRDRAM(playerActor) then
+		return mainmemory.read_u32_be(playerActor + GameConstants.player_fields.Grounded)
+	end
+end
+
 function dumpPlayerInfo(player)
 	gui.drawString(0,0, "Character: " .. Game.getCharacterName(player), null, null, 9)
 	
@@ -174,10 +193,11 @@ function dumpPlayerInfo(player)
 	gui.drawString(0,60, "Dir Facing: " .. Game.getFacingDirection(player), null, null, 9)
 	gui.drawString(0,70, "Jump Counter: " .. Game.getJumpsRemaining(player), null, null, 9)
 	gui.drawString(0,80, "Damage%: " .. Game.getDamage(player), null, null, 9)
+	gui.drawString(0,90, "In In Air: " .. Game.isInAir(player), null, null, 9)
 end
 
 -- This function builds the input for the Learning Client. It includes all of the important variables of the game state
-function buildDataMapForServer()
+function getGameStateMap()
 	local data = {}
 	-- For each player, gather everything we can about their states
 	for player = 1, 2 do
@@ -201,6 +221,7 @@ function buildDataMapForServer()
 		data[key_prefix.."jumps_remaining"] = Game.getJumpsRemaining(player)
 		data[key_prefix.."direction"] = Game.getFacingDirection(player)
 		data[key_prefix.."state_frame"] = Game.getMovementFrame(player)
+		data[key_prefix.."is_in_air"] = Game.isInAir(player)
 
 		-- Finally, get current damage
 		data[key_prefix.."damage"] = Game.getDamage(player)
@@ -208,34 +229,8 @@ function buildDataMapForServer()
 	return data
 end
 
-function split(inputstr, sep)
-	if sep == nil then
-		sep = "%s"
-	end
-	local t={} ; i=1
-	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-		t[i] = str
-		i = i + 1
-	end
-	return t
-end
-
-function dump(o)
-	if type(o) == 'table' then
-		local s = '{ '
-		for k,v in pairs(o) do
-			if type(k) ~= 'number' then k = '"'..k..'"' end
-			s = s .. '['..k..'] = ' .. dump(v) .. ','
-		end
-		return s .. '} '
-	else
-		return tostring(o)
-	end
-end
-
 -- This method parses the response from the Learning Server into button presses.
 function parse_server_response_into_inputs(resp)
-	local r = {}
 	local tokens = split(resp, ",")
 	for i = 1, #tokens do
 		if tokens[i] == "1" then
@@ -250,37 +245,51 @@ function parse_server_response_into_inputs(resp)
 end
 
 -- This method applies the button presses to the game
-function do_button_presses(inputs)
-	dump(inputs)
-	if #inputs > 0 then
-		dump(inputs[1])
-		joypad.set(inputs[1], 1);
-		if #inputs == 2 then
-			joypad.setanalog(inputs[2], 1);
-		end
-	else
-		-- Reset everything if the result is a "NOTHING" input
-		joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
-		joypad.set({}, 1)
+function do_button_presses(inputs, player)
+	-- We are setting the analog stick to 0 for every input because, unlike buttons, we need to "unset" the analog stick
+	joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
+
+	local button = inputs[1]
+	local analog = inputs[2]
+
+	joypad.set(button, player);
+	joypad.setanalog(analog, player);
+end
+
+-- This method applies the button presses to the game
+function add_game_state_to_state_buffer(data)
+	local popped = nil
+	List.pushright(previousStateBuffer, data)
+	if List.length(previousStateBuffer) > GAME_STATE_BUFFER_SIZE then
+		popped = List.popleft(previousStateBuffer)
 	end
+	return popped
 end
 
 -- Main scripting loop
 while true do
-	-- We are resetting the joystick for every frame. Unlike buttons, bizhawk does not reset
-	-- the joystick back to neutral after this frame
-	joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
+	-- Gather state data and add it to our state buffer (knocking out the oldest entry)
+    local data = getGameStateMap()
+	local popped_frame = add_game_state_to_state_buffer(data)
 
-	-- Gather state data, send it to the server, and wait for the server's response (which should be inputs)
-    local data = buildDataMapForServer()
-	local resp = TF_CLIENT.send_data_for_training(data)
+	-- Do not ask for inputs or send data to train if we're reviving or we just died last frame
+	if Game.getMovementState(1) == 7 or (popped_frame ~= nil and popped_frame["1state"] <= 4) then
+		-- doing nothing
+	else
+		-- If we have all the states we need in the buffer, and we're not skipping this frame, then get our inputs from the server
+		if List.length(previousStateBuffer) == GAME_STATE_BUFFER_SIZE and tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0 then
+			local resp = TF_CLIENT.send_data_for_training(GAME_STATE_BUFFER_SIZE, previousStateBuffer)
+			currentAction = parse_server_response_into_inputs(resp)
+			tfServerSampleIteration = 0
+		end
+	end
 
-	-- We expect (in string form) a comma-separated list of 0's and 1's, where 1 indicates that the button should be pressed.
-	-- We need to parse the string into a lua table and feed it into Bizhawk as inputs.
-	local inputs = parse_server_response_into_inputs(resp)
-	do_button_presses(inputs)
 	dumpPlayerInfo(1)
+	-- Do the current action we have.
+	do_button_presses(currentAction, 1)
 
 	-- Do the next frame (and pray things don't break)
 	emu.frameadvance();
+
+	tfServerSampleIteration = tfServerSampleIteration + 1
 end

@@ -1,6 +1,7 @@
 -- This module contains methods for sending data to the tensorflow server, and retrieving predictions based on the data
 
 http = require("socket.http")
+require "list"
 local ltn12 = require 'ltn12'
 local CLIENT = {}
 
@@ -22,22 +23,29 @@ function dump(o)
     end
 end
 
-function CLIENT.convert_map_to_form_data(map)
+function CLIENT.convert_map_to_form_data(buffer_size, stateList, action)
     local data = ""
     local keyvals = {}
     local i = 1
-    for k, v in pairs(map) do
-        keyvals[i] =  k.."="..v
-        i = (i + 1)
+
+    -- For each state, convert the key/values into form elements
+    for state_num = 1, buffer_size do
+        local state = List.popleft(stateList)
+        for k, v in pairs(state) do
+            local key = "s"..state_num.."_"..k
+            keyvals[i] =  key.."="..v
+            i = (i + 1)
+        end
+        List.pushright(stateList, state)
     end
 
+    -- Format the form elements into something resembling a POST body
     for i = 1, #keyvals do
-        if i == #keyvals then
-            data = data..keyvals[i]
-        else
-            data = data..keyvals[i].."&"
-        end
+        data = data..keyvals[i].."&"
     end
+
+    -- Add the action
+    data = data.."action="..action
     return data
 end
 
@@ -60,9 +68,8 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 -- This function sends data to the server with the intention of training the model. It returns an output
-function CLIENT.send_data_for_training(data)
-    data["action"] = TRAIN
-    local request_body = CLIENT.convert_map_to_form_data(data)
+function CLIENT.send_data_for_training(buffer_size, data)
+    local request_body = CLIENT.convert_map_to_form_data(buffer_size, data, TRAIN)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
