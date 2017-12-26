@@ -28,6 +28,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length) # <--- Gets the data itself
+
         fields = self.get_form_data_from_request(data)
         response = None
 
