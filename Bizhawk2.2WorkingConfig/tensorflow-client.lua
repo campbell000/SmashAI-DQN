@@ -80,10 +80,9 @@ function CLIENT.send_data_for_prediction(data)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
-function CLIENT.say_hello(data)
-    data["action"] = HELLO
-    local request_body = CLIENT.convert_map_to_form_data(data)
-    return CLIENT.send_request_to_tensorflow_server(request_body)
+function CLIENT.say_hello()
+    local helloData = "action="..HELLO
+    return CLIENT.send_request_to_tensorflow_server(helloData)
 end
 
 function CLIENT.fake_say_hello(data)

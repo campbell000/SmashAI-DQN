@@ -3,7 +3,6 @@
 
 client = require("tensorflow-client")
 data = {}
-data["attr1"] = "Hi from bizhawk!"
 
 local resp = client.say_hello(data)
 print("Response from tensorflow server: "..resp)

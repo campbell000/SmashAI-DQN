@@ -1,10 +1,12 @@
 # This class is responsible for calculating the rewards for a previous state / current state pair.
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
-NOTHING_REWARD = 0.000 # Incentivize it to NOT die
+NOTHING_REWARD = 0.000001 # Incentivize it to NOT die
+
+
 class Rewarder:
 
-    def __init__(self, num_frames_per_state, sample_rate, life_multiplier=1, damage_multiplier=0.01):
+    def __init__(self, num_frames_per_state, sample_rate, life_multiplier=1, damage_multiplier=0.001):
         self.sample_rate = sample_rate
         self.num_frames_per_state = num_frames_per_state
         self.life_multiplier = life_multiplier
@@ -47,10 +49,8 @@ class Rewarder:
 
         # Do NOT reward or punish the bot when their damage counter gets reset.
         if damage_taken < 0:
-            print("Not allowing damage counter reset to reward bot!")
             damage_taken = 0
         if damage_dealt < 0:
-            print("Now allowing damage counter reset to punish bot!")
             damage_dealt = 0
 
         damage_reward = damage_dealt - damage_taken
@@ -62,12 +62,11 @@ class Rewarder:
         death_reward = is_opponent_dead - is_bot_dead
 
         # Calculate final reward by adding the damage-related rewards to the death-related rewards
-        reward = 0
-        reward += (damage_reward * self.damage_multiplier)
+        reward = (damage_reward * self.damage_multiplier)
         reward += (death_reward * self.life_multiplier)
 
-        # THIS GIVES THE BOT A LITTLE BIT OF MOTIVATION TO STAY ALIVE IF NOTHING_REWARD > 0
-        if reward == 0 and (damage_dealt == 0 and damage_taken == 0):
+        # If the bot did not take damage and did not die, give it a little bit of a reward
+        if damage_taken == 0 and is_bot_dead == 0:
             reward += NOTHING_REWARD
 
         if for_current_verbose:
