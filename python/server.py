@@ -1,5 +1,5 @@
 # This file is the server that listens to requests from Bizhawk / Lua to train (and retrieve predictions for) the
-# Super Smash Bros bot. In the diagrams, it is the "Learning Server"
+# Super Smash Bros bot.
 
 PORT = 8081
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -9,6 +9,11 @@ from dqn import SSB_DQN
 import tensorflow as tf
 import ast
 import sys
+
+# THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
+TRAIN = 0
+EVAL = 1
+HELLO = 2
 
 # This class handles requests from bizhawk
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -28,17 +33,24 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length) # <--- Gets the data itself
-
-        fields = self.get_form_data_from_request(data)
+        fields = self.get_form_data_from_request(data) # Parse the data into a map
         response = None
 
         # Perform an action based on the "action" field in the POST data
         action = fields["action"]
         del fields['action'] # remove this field cause we don't need it anymore
-        if action == 0:
+
+        # If the action is train, train the bot and also retrieve a prediction for the client
+        if action == TRAIN:
             action_array = self.dqn_model.get_prediction(fields, do_train=True)
             response = transform_actions_for_client(action_array)
+
+        # Otherwise, simply get a prediction. Do not train the bot.
+        elif action == EVAL:
+            action_array = self.dqn_model.get_prediction(fields, do_train=False)
+            response = transform_actions_for_client(action_array)
         else:
+            print("Saying HELLO to the tensorflow client!")
             response = "HI FROM TENSORFLOW SERVER! THIS IS WHAT YOU SENT ME:\n"+str(data)
 
         # Write the response of the action to the client
@@ -67,7 +79,7 @@ def run():
         dqn_model = SSB_DQN(sess, verbose=verbose)
 
         # Run Server
-        server_address = ('127.0.0.1', PORT)
+        server_address = ('0.0.0.0', PORT)
         testHTTPServer_RequestHandler.dqn_model = dqn_model
         httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
         print('running server...')
