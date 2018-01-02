@@ -1,18 +1,6 @@
 # DeepLearningProject
 This project includes a working copy of Bizhawk (the most recent at this point in time) and a working integration of luasockets. For whatever reason, this is difficult to do. So for convenience, I am uploading the entire bizhawk binary.
 
-## IMPORTANT INFO FOR CS5984 INSTRUCTORS AND GRADERS:
-This project contains many files: in addition to the learning/DQN code I wrote, I also uploaded the emulator and all of the libraries I used to this repo to make it easy for other people to set up this configuration (it was not easy). **For Grading Purposes, here are links to all of the contributions that I made for this project**:
-- Youtube Link: https://www.youtube.com/watch?v=74TzP-3fQR8&feature=youtu.be
-- Source Code that I wrote:
-    - All files in the "python" directory. This is where the http server, DQN algorithm, and Tensorflow components are implemented.
-    - The following files in the "Bizhawk2.2WorkingConfig" directory:
-        - ssb.lua: This is the main script for extracting game state values responding to the tensorflow-server's messages
-        - tensorflow-client.lua: This contains the main functions for communicating with the tensorflow server.
-        - gameConstants.lua: File that contains important constants. Note that many of them (but not all) come from here: https://github.com/Isotarge/ScriptHawk
-    - See the "Credits" section down below for other repos that I borrowed code/ideas from.
-
-
 ## Essential Configuration
 For now, we have to use the "faster, less reliable (memory leaks!)" version of Lua in Bizhawk. So, to configire Bizhawk and test that it's working, do the following:
 - Load up the included PONG.V64 game (it's homebrew, so no need to arrest me).
@@ -26,6 +14,9 @@ For now, we have to use the "faster, less reliable (memory leaks!)" version of L
 - Copy the contents of the "lua folder" into the "Lua" folder of your Bizhawk installation
 - Put the "socket" and "mime" folders in the ROOT of your bizhawk installation directory. These should JUST contain DLLs.
 - Follow the steps in "Essential Configuration" above.
+
+# Troubleshooting
+- If you get "%1 is not a valid Win32 Application" when downloading this repo and running the lua scripts in bizhawk, take the files from the luasockets64.zip folder and put them in the sockets/mime folders (overwriting the files already contained in them).
 
 # Credits
 - Useful post for getting me started: https://stackoverflow.com/questions/33428382/add-luasocket-to-program-bizhawk-shipped-with-own-lua-environment
