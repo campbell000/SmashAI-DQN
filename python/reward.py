@@ -1,12 +1,12 @@
 # This class is responsible for calculating the rewards for a previous state / current state pair.
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
-NOTHING_REWARD = 0.000000 # Incentivize it to NOT die
+NOTHING_REWARD = 0.00001 # Incentivize it to NOT die
 
 
 class Rewarder:
 
-    def __init__(self, num_frames_per_state, sample_rate, life_multiplier=1, damage_multiplier=0.001):
+    def __init__(self, num_frames_per_state, sample_rate, life_multiplier=1, damage_multiplier=0.01):
         self.sample_rate = sample_rate
         self.num_frames_per_state = num_frames_per_state
         self.life_multiplier = life_multiplier
@@ -59,8 +59,8 @@ class Rewarder:
         damage_reward = damage_dealt - damage_taken
 
         # Calculate kills / deaths. Since death states occur for a few frames, check if death ocurred right after not-death ocurred.
-        is_bot_dead = self.player_died(experience, 0)
-        is_opponent_dead = self.player_died(experience, 1)
+        is_bot_dead = self.player_died(experience, 0) * 1000
+        is_opponent_dead = 0
         death_reward = is_opponent_dead - is_bot_dead
 
         # Calculate final reward by adding the damage-related rewards to the death-related rewards
