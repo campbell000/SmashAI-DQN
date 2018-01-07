@@ -20,7 +20,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 
 -- This variable is the number of game states we are sending to the tensorflow server. Note that the tensorflow server
 -- needs to know this variable ahead of time to train the network.
-local GAME_STATE_BUFFER_SIZE = 4
+local GAME_STATE_BUFFER_SIZE = 2
 
 -- This function returns the player
 function Game.getPlayer(player)

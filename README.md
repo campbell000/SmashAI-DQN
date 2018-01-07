@@ -18,6 +18,12 @@ For now, we have to use the "faster, less reliable (memory leaks!)" version of L
 ## Troubleshooting
 - If you get "%1 is not a valid Win32 Application" when downloading this repo and running the lua scripts in bizhawk, take the files from the luasockets64.zip folder and put them in the sockets/mime folders (overwriting the files already contained in them).
 
+## Assumptions
+For simplicity and speeding up development, the following assumptions/shortcuts are made
+- The bot is always first player.
+- The bot is always yoshi, and the opponent is always pikachu
+- The game is always played on dreamland.
+
 ## Credits
 - Useful post for getting me started: https://stackoverflow.com/questions/33428382/add-luasocket-to-program-bizhawk-shipped-with-own-lua-environment
 - Good example of Lua+Bizhawk+Tensorflow in action: https://github.com/rameshvarun/NeuralKart. The author was also very helpful in answering some questions I had, and gave me the tip that his code only worked with Bizhawk 1.13.1. I eventually learned that later versions switched the Lua implementations, which led me to discover that switching the lua version eliminated the "dynamic libraries not supported" error. **My implementation of this is unique, but I got the idea from this repo**

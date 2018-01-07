@@ -16,14 +16,15 @@ import uuid
 #[s1:10, s2:20, s3:30, s4:40]
 
 # Number of frames the client is sending
-NUM_FRAMES_PER_STATE = 4
+NUM_FRAMES_PER_STATE = 2
+CURRENT_FRAME_IDX = NUM_FRAMES_PER_STATE
 
 # The frequency at which the client asks for a response (i.e. if 1, then the client sends a request to the server every frame).
 SAMPLE_RATE = 2
 
-LEARNING_RATE = 0.00001
-NUM_HIDDEN_UNITS = 512
-NUM_HIDDEN_UNITS_2 = 256
+LEARNING_RATE = 0.0001
+NUM_HIDDEN_UNITS = 256
+NUM_HIDDEN_UNITS_2 = 128
 NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_FRAMES_PER_STATE * (NUM_POSSIBLE_STATES + 13) * 2) # taken from number of non-state params in client data, multiplied by 2 players
@@ -38,9 +39,12 @@ MINI_BATCH_SIZE = 32  # size of mini batches
 NUM_STEPS_FOR_TARGET_NETWORK = 2000
 STATUS_REPORT_INTERVAL = 2000
 SAVED_ITERATIONS = 100000
+DO_EPSILON_DECAY = False
+EPSILON = 0.02
 
 PREVIOUS_INDEX = 0
 CURRENT_INDEX = 1
+ACTION_FROM_PREVIOUS_INDEX = 2
 
 
 MAIN_NETWORK = "main"
@@ -55,6 +59,7 @@ class SSB_DQN:
         self.rewarder = Rewarder(NUM_FRAMES_PER_STATE, SAMPLE_RATE)
         self.experiences = deque()
         self.prev_state = None
+        self.action_taken_from_prev_state = None
         self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
         self.verbose = verbose
         self.evaluator = Evaluator(self.rewarder)
@@ -69,13 +74,6 @@ class SSB_DQN:
         #self.saver = tf.train.import_meta_graph("./ac48aea8-8f33-4054-a700-3a23a331eda7-1000000.meta")
         #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
-
-    # Adds an experience to the Experience DB. Experiences consist of two elements. The first element is previous data,
-    # the second is current data
-    def add_experience(self, experience):
-        self.experiences.append(experience)
-        if len(self.experiences) >= EXPERIENCE_BUFFER_SIZE:
-            self.experiences.popleft()
 
     # Given a state, gets an action. Optionally, it also trains the Q-network
     def get_prediction(self, current_state, do_train):
@@ -109,14 +107,14 @@ class SSB_DQN:
 
         # Regardless of what we've done, update our previous state (and the action we took).
         self.prev_state = current_state
-        self.prev_state["action"] = action
+        self.action_taken_from_prev_state = action
         return action
 
     # This method performs one iteration of the DQN algorithm. It returns an action to perform by the client
     def do_dqn_iteration(self, current_state, do_train):
 
         # Add the experience to the replay database
-        new_experience = [self.prev_state, current_state]
+        new_experience = [self.prev_state, current_state, self.action_taken_from_prev_state]
         self.add_experience(new_experience)
 
         # Only train when we are done making our initial observations
@@ -128,6 +126,13 @@ class SSB_DQN:
 
         # get the next action based on a batch of samples in our replay DB
         return self.choose_next_action(current_state)
+
+    # Adds an experience to the Experience DB. Experiences consist of two elements. The first element is previous data,
+    # the second is current data
+    def add_experience(self, experience):
+        self.experiences.append(experience)
+        if len(self.experiences) >= EXPERIENCE_BUFFER_SIZE:
+            self.experiences.popleft()
 
     # This method returns an action to execute for the current state. It will either pick a random action, or an action
     # based on the output of the NN.
@@ -172,7 +177,7 @@ class SSB_DQN:
 
         # Get the necessary data to do DQN
         previous_states = [self.convert_client_data_to_tensorflow(x[PREVIOUS_INDEX]) for x in mini_batch]
-        previous_actions = [x[PREVIOUS_INDEX]["action"] for x in mini_batch]
+        previous_actions = [x[ACTION_FROM_PREVIOUS_INDEX] for x in mini_batch]
         rewards = [self.rewarder.calculate_reward(x) for x in mini_batch]
         current_states = [self.convert_client_data_to_tensorflow(x[CURRENT_INDEX]) for x in mini_batch]
         agents_expected_reward = []
@@ -211,7 +216,7 @@ class SSB_DQN:
 
     # This method converts the data from the client into data for tensorflow.
     def convert_client_data_to_tensorflow(self, data):
-        return NN.transform_client_data_for_tensorflow(data, NUM_POSSIBLE_STATES, NUM_FRAMES_PER_STATE)
+        return NN.transform_client_data_for_tensorflow(data, NUM_POSSIBLE_STATES, verbose=self.verbose)
 
     # Prints a status report to the screen
     def status_report(self):
@@ -226,8 +231,11 @@ class SSB_DQN:
 
     # This method adjusts the random probability of picking an action to anneal over time.
     def adjust_random_probability(self):
-        if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
-            self.current_random_action_prob -= (INITIAL_RANDOM_ACTION_PROB - FINAL_RANDOM_ACTION_PROB) / EXPLORE_STEPS
+        if DO_EPSILON_DECAY:
+            if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
+                self.current_random_action_prob -= (INITIAL_RANDOM_ACTION_PROB - FINAL_RANDOM_ACTION_PROB) / EXPLORE_STEPS
+        else:
+            self.current_random_action_prob = EPSILON
 
     # Set to true for more output while the training is ocurring.
     def set_verbose(self, v):
