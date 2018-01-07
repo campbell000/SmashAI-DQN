@@ -48,7 +48,7 @@ class Rewarder:
         # TODO WE NEED TO NOT HARD CODE THE FACT THAT PLAYER 1 IS THE BOT.
         last_frame_idx = self.num_frames_per_state - 1
         damage_taken = current[last_frame_idx][0]["damage"] - prev[last_frame_idx][0]["damage"]
-        damage_dealt = current[last_frame_idx][1]["damage"] - prev[last_frame_idx][1]["damage"]
+        damage_dealt = 0
 
         # Do NOT reward or punish the bot when their damage counter gets reset.
         if damage_taken < 0:

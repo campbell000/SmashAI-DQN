@@ -26,11 +26,11 @@ class NeuralNetwork:
     def build_model(self):
 
         def weight_var(shape):
-            initial = tf.truncated_normal(shape, stddev=0.1)
+            initial = tf.truncated_normal(shape, stddev=0.01)
             return tf.Variable(initial)
 
         def bias_var(shape):
-            initial = tf.constant(0.1, shape=shape)
+            initial = tf.constant(0.01, shape=shape)
             return tf.Variable(initial)
 
         with tf.variable_scope(self.name):

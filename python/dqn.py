@@ -22,7 +22,7 @@ CURRENT_FRAME_IDX = NUM_FRAMES_PER_STATE
 # The frequency at which the client asks for a response (i.e. if 1, then the client sends a request to the server every frame).
 SAMPLE_RATE = 2
 
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.00001
 NUM_HIDDEN_UNITS = 256
 NUM_HIDDEN_UNITS_2 = 128
 NUM_HIDDEN_LAYERS = 2
@@ -90,9 +90,8 @@ class SSB_DQN:
         else:
             action = self.do_dqn_iteration(current_state, do_train)
 
-            # Print out the reward every frame if we're in verbose mode
-            if self.verbose:
-                self.rewarder.calculate_reward([self.prev_state, current_state], True)
+            reward_for_current_exp = self.rewarder.calculate_reward([self.prev_state, current_state])
+            self.evaluator.add_avg_reward(reward_for_current_exp)
 
         # Adjust the chance of choosing a random action
         self.adjust_random_probability()
@@ -157,6 +156,9 @@ class SSB_DQN:
             # Convert the output into a one hot. The one hot index should be the index with the highest output
             action_index = np.argmax(output)
             final_action[action_index] = 1
+
+            self.evaluator.add_q_value(np.mean(output))
+
             return final_action
 
     # This method retrieves a sample batch of experiences from the experience replay DB
@@ -201,13 +203,12 @@ class SSB_DQN:
             m["target"] : agents_expected_reward
         })
 
-        if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
-            loss = m["sess"].run(m["loss"], feed_dict={
-                m["x"] : previous_states,
-                m["action"] : previous_actions,
-                m["target"] : agents_expected_reward
-            })
-            print("LOSS: "+str(loss))
+        loss = m["sess"].run(m["loss"], feed_dict={
+            m["x"] : previous_states,
+            m["action"] : previous_actions,
+            m["target"] : agents_expected_reward
+        })
+        self.evaluator.add_loss(loss)
 
         # Every N iterations, update the training network with the model of the "real" network
         if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:

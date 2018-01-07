@@ -5,6 +5,8 @@ class Evaluator:
     def __init__(self, rewarder, buffer_size=50000 ):
         self.buffer = buffer_size
         self.max_q_values = {}
+        self.avg_rewards = []
+        self.losses = []
         self.current_kills=0
         self.rewarder = rewarder
         try:
@@ -18,7 +20,12 @@ class Evaluator:
             a = 1
 
         try:
-            os.remove("loss.txt")
+                os.remove("loss.txt")
+        except:
+            a = 1
+
+        try:
+            os.remove("avg_reward.txt")
         except:
             a = 1
         self.iteration = 0
@@ -28,6 +35,30 @@ class Evaluator:
         self.iteration += 1
         if len(self.max_q_values) >= self.buffer:
             self.dump_buffer()
+
+    def add_avg_reward(self, reward):
+        self.avg_rewards.append(reward)
+        if len(self.avg_rewards) >= self.buffer:
+            self.dump_reward_buffer()
+
+    def dump_reward_buffer(self):
+        with open('avg_reward.txt', 'a') as file:
+            for k in self.avg_rewards:
+                file.write(str(k)+"\n")
+
+        self.avg_rewards = []
+
+    def add_loss(self, loss):
+        self.losses.append(loss)
+        if len(self.losses) >= self.buffer:
+            self.dump_loss_buffer()
+
+    def dump_loss_buffer(self):
+        with open('loss.txt', 'a') as file:
+            for k in self.losses:
+                file.write(str(k)+"\n")
+
+        self.losses = []
 
     def dump_buffer(self):
         with open('average_q_values.txt', 'a') as file:
