@@ -31,7 +31,7 @@ INPUT_LENGTH = (NUM_FRAMES_PER_STATE * (NUM_POSSIBLE_STATES + 13) * 2) # taken f
 OUTPUT_LENGTH = 54 # taken from actions taken from gameConstants.lua
 EXPERIENCE_BUFFER_SIZE = 50000
 FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
-OBSERVATION_STEPS = 5000  # time steps to observe before training
+OBSERVATION_STEPS = 1000  # time steps to observe before training
 EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
 INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
 FINAL_RANDOM_ACTION_PROB = 0.01  # final chance of an action being random
@@ -90,7 +90,7 @@ class SSB_DQN:
         else:
             action = self.do_dqn_iteration(current_state, do_train)
 
-            reward_for_current_exp = self.rewarder.calculate_reward([self.prev_state, current_state])
+            reward_for_current_exp = self.rewarder.calculate_reward([self.prev_state, current_state], self.verbose)
             self.evaluator.add_avg_reward(reward_for_current_exp)
 
         # Adjust the chance of choosing a random action
