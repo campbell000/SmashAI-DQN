@@ -2,3 +2,11 @@
 /**config.ini
 Bizhawk2.2WorkingConfig/config.ini
 .idea/
+python/*.meta
+python/*.index
+python/*.data-*
+python/checkpoint
+python/average_q_values.txt
+python/loss.txt
+python/avg_reward.txt
+python/__pycache__/*
