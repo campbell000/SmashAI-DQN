@@ -3,11 +3,9 @@
 
 PORT = 8081
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse
-from cgi import parse_qs, escape
 from dqn import SSB_DQN
 import tensorflow as tf
-import ast
+from gamedata_parser import GameDataParser
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -21,24 +19,12 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     dqn_model = None
     started = False
 
-    # This function converts the POST data into a map
-    def get_form_data_from_request(self, req):
-        form_data = {}
-        fields = parse_qs(req)
-        for k in fields:
-            form_data[k.decode()] = ast.literal_eval(fields[k][0].decode())
-
-        return form_data
-
+    # This function handles requests from the client.
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-        data = self.rfile.read(content_length) # <--- Gets the data itself
-        fields = self.get_form_data_from_request(data) # Parse the data into a map
+        data = self.rfile.read(content_length).decode() # <--- Gets the data itself
+        action, fields = GameDataParser.parse_client_data(data) # Parse the data into a map
         response = None
-
-        # Perform an action based on the "action" field in the POST data
-        action = fields["action"]
-        del fields['action'] # remove this field cause we don't need it anymore
 
         # If the action is train, train the bot and also retrieve a prediction for the client
         if action == TRAIN:
@@ -70,7 +56,11 @@ def transform_actions_for_client(action_arr):
 def run():
     print('starting server...')
 
-    sess = tf.Session()
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth=True
+    sess = tf.Session(config=config)
+
     with sess.as_default():
         verbose = False
         if len(sys.argv) >= 2 and sys.argv[1] == "verbose":

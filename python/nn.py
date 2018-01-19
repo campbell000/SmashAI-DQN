@@ -16,15 +16,21 @@ class NeuralNetwork:
         self.name = name
         self.session = session
 
+    def leaky_softplus(self, x, alpha=0.01):
+        "Really just a special case of log_sum_exp."
+        ax = alpha * x
+        maxes = tf.stop_gradient(tf.maximum(ax, x))
+        return maxes + tf.log(tf.exp(ax - maxes) + tf.exp(x - maxes))
+
     # This method builds and returns the model for estimating Q values
     def build_model(self):
 
         def weight_var(shape):
-            initial = tf.truncated_normal(shape, stddev=0.01)
+            initial = tf.truncated_normal(shape, stddev=0.1)
             return tf.Variable(initial)
 
         def bias_var(shape):
-            initial = tf.constant(0.01, shape=shape)
+            initial = tf.constant(0.1, shape=shape)
             return tf.Variable(initial)
 
         with tf.variable_scope(self.name):
@@ -35,12 +41,12 @@ class NeuralNetwork:
             # Create the first hidden layer
             W1 = weight_var([self.INPUT_LENGTH, self.NUM_HIDDEN_UNITS])
             b1 = bias_var([self.NUM_HIDDEN_UNITS])
-            layer_1 = tf.nn.relu(tf.add(tf.matmul(x, W1), b1))
+            layer_1 = self.leaky_softplus(tf.add(tf.matmul(x, W1), b1))
 
             # Create the second hidden layer
             W2 = weight_var([self.NUM_HIDDEN_UNITS, self.NUM_HIDDEN_UNITS_SECOND_LAYER])
             b2 = bias_var([self.NUM_HIDDEN_UNITS_SECOND_LAYER])
-            layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, W2), b2))
+            layer_2 = self.leaky_softplus(tf.add(tf.matmul(layer_1, W2), b2))
 
             # Create the output layer
             W3 = weight_var([self.NUM_HIDDEN_UNITS_SECOND_LAYER, self.OUTPUT_LENGTH])
@@ -77,49 +83,41 @@ def get_copy_var_ops(dest_name, src_name):
 
     return op_holder
 
+# This method converts the state of the player into a one-hot vector. Required since
+# the state doesn't really mean anything in a numerical sense.
+def convert_state_to_vector(state_value, num_possible_states):
+    v = [0] * num_possible_states
+    try:
+        v[state_value] = 1
+    except:
+        print(state_value)
+        print(v)
+        raise Exception("State value exceeded expected maximum number of states!")
+
+    return v
+
 # Converts ssb state data into data appropriate for tensorflow. If there's more than one
-def transform_client_data_for_tensorflow(data, num_possible_states, num_frames_per_state):
+def transform_client_data_for_tensorflow(data, num_possible_states, verbose=False):
 
-    def get_val(client_data, name, frame, player):
-        key = "s"+str(frame)+"_"+str(player)+""+str(name)
-        if key not in client_data:
-            raise Exception("Looked for "+str(key)+" in the client's data, but we couldn't find it!")
-        return client_data[key] # Convert the string into a float or int
-
-    # This method converts the state of the player into a one-hot vector. Required since
-    # the state doesn't really mean anything in a numerical sense.
-    def convert_state_to_vector(client_data, frame, player):
-        k = "s"+str(frame)+"_"+str(player)+"state"
-        val = client_data[k]
-        v = [0] * num_possible_states
-        try:
-            v[val] = 1
-        except:
-            print(val)
-            print(v)
-            raise Exception("State value exceeded expected maximum number of states!")
-
-        return v
-
-    # DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
+    # Iterate through each state, and each state's player data, and flatten all of it into one vector to feed into TF.
     tf_data = []
-    for frame in range(1, num_frames_per_state+1): # Lua is 1-indexed.....ugh
-        for i in range(1, 3):
-            # Append numeric data to vector
-            tf_data.append(get_val(data, "xp", frame, i))
-            tf_data.append(get_val(data, "xv", frame, i))
-            tf_data.append(get_val(data, "xa", frame, i))
-            tf_data.append(get_val(data, "yp", frame, i))
-            tf_data.append(get_val(data, "yv", frame, i))
-            tf_data.append(get_val(data, "ya", frame, i))
-            tf_data.append(get_val(data, "shield_size", frame, i))
-            tf_data.append(get_val(data, "shield_recovery_time", frame, i))
-            tf_data.append(get_val(data, "direction", frame, i))
-            tf_data.append(get_val(data, "jumps_remaining", frame, i))
-            tf_data.append(get_val(data, "damage", frame, i))
-            tf_data.append(get_val(data, "state_frame", frame, i))
-            tf_data.append(get_val(data, "is_in_air", frame, i))
+    for state in data:
+        for player_data in state:
+            # Append numeric data to vector. DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
+            tf_data.append(player_data["xp"])
+            tf_data.append(player_data["xv"])
+            tf_data.append(player_data["xa"])
+            tf_data.append(player_data["yp"])
+            tf_data.append(player_data["yv"])
+            tf_data.append(player_data["ya"])
+            tf_data.append(player_data["shield_size"])
+            tf_data.append(player_data["shield_recovery_time"])
+            tf_data.append(player_data["direction"])
+            tf_data.append(player_data["jumps_remaining"])
+            tf_data.append(player_data["damage"])
+            tf_data.append(player_data["state_frame"])
+            tf_data.append(player_data["is_in_air"])
 
             # Convert the categorical state variable into binary data
-            tf_data = tf_data + convert_state_to_vector(data, frame, i)
+            tf_data = tf_data + convert_state_to_vector(player_data["state"], num_possible_states)
     return tf_data

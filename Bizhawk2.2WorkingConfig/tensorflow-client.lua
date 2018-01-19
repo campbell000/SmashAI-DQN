@@ -32,7 +32,7 @@ function CLIENT.convert_map_to_form_data(buffer_size, stateList, action)
     for state_num = 1, buffer_size do
         local state = List.popleft(stateList)
         for k, v in pairs(state) do
-            local key = "s"..state_num.."_"..k
+            local key = "s"..state_num.."p"..k
             keyvals[i] =  key.."="..v
             i = (i + 1)
         end

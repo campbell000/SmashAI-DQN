@@ -1,7 +1,7 @@
 # This class is responsible for calculating the rewards for a previous state / current state pair.
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
-NOTHING_REWARD = 0.000001 # Incentivize it to NOT die
+NOTHING_REWARD = 0.000000 # Incentivize it to NOT die
 
 
 class Rewarder:
@@ -23,20 +23,21 @@ class Rewarder:
         prev = experience[0]
         current = experience[1]
 
-        # Check if the player did NOT die in the previous frame. If they did, they we are NOT considering them dead,
+        # Check if the player did NOT die in the previous state. If they did, they we are NOT considering them dead,
         # since we are only counting the death reward ONCE, and that's when they immediately die.
-        for frame in range((self.num_frames_per_state - self.sample_rate + 1), self.num_frames_per_state+1):
-            key = "s"+str(frame)+"_"+str(player)+"state"
-            if self.state_is_death(prev[key]):
+        for state in prev:
+            state_value = state[player]["state"]
+            if self.state_is_death(state_value):
                 return 0
 
-        player_died_current_frame = False
-        for frame in range((self.num_frames_per_state - self.sample_rate + 1), self.num_frames_per_state+1):
-            key = "s"+str(frame)+"_"+str(player)+"state"
-            if self.state_is_death(current[key]):
-                player_died_current_frame = True
+        # If the player hasn't died in the previous state, and there IS a death in the current state, then consider them dead
+        for state in current:
+            state_value = state[player]["state"]
+            if self.state_is_death(state_value):
+                return 1
 
-        return 1 if player_died_current_frame else 0
+        # If they didn't die in either the previous state or current state, then they ain't dead.
+        return 0
 
     # This method calculates the reward for an experience. It assumes that player 1 is the bot we want to train
     def calculate_reward(self, experience, for_current_verbose=False):
@@ -44,8 +45,10 @@ class Rewarder:
         current = experience[1]
 
         # Calculate damage dealt / taken differentials. Use the damage from the LAST frames for the previous/current states
-        damage_taken = current["s"+str(self.num_frames_per_state)+"_1damage"] - prev["s"+str(self.num_frames_per_state)+"_1damage"]
-        damage_dealt = current["s"+str(self.num_frames_per_state)+"_2damage"] - prev["s"+str(self.num_frames_per_state)+"_2damage"]
+        # TODO WE NEED TO NOT HARD CODE THE FACT THAT PLAYER 1 IS THE BOT.
+        last_frame_idx = self.num_frames_per_state - 1
+        damage_taken = current[last_frame_idx][0]["damage"] - prev[last_frame_idx][0]["damage"]
+        damage_dealt = current[last_frame_idx][1]["damage"] - prev[last_frame_idx][1]["damage"]
 
         # Do NOT reward or punish the bot when their damage counter gets reset.
         if damage_taken < 0:
@@ -56,9 +59,8 @@ class Rewarder:
         damage_reward = damage_dealt - damage_taken
 
         # Calculate kills / deaths. Since death states occur for a few frames, check if death ocurred right after not-death ocurred.
-        # For this, we are checking the last N frames for a change in death values (N = sample rate)
-        is_bot_dead = self.player_died(experience, 1)
-        is_opponent_dead = self.player_died(experience, 2)
+        is_bot_dead = self.player_died(experience, 0)
+        is_opponent_dead = self.player_died(experience, 1)
         death_reward = is_opponent_dead - is_bot_dead
 
         # Calculate final reward by adding the damage-related rewards to the death-related rewards
@@ -81,11 +83,11 @@ class Rewarder:
 
     # This method returns true if the bot we're training gets KO'd
     def bot_killed_opponent(self, experience):
-        return self.player_died(experience, 2)
+        return self.player_died(experience, 1)
 
     # This method returns true if the bot's opponent gets KO'd
     def opponent_killed_bot(self, experience):
-        return self.player_died(experience, 1)
+        return self.player_died(experience, 0)
 
     # This method retrurns true if the current experience is a terminal state
     def is_terminal(self, experience):
