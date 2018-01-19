@@ -16,16 +16,15 @@ import uuid
 #[s1:10, s2:20, s3:30, s4:40]
 
 # Number of frames the client is sending
-NUM_FRAMES_PER_STATE = 2
+NUM_FRAMES_PER_STATE = 2 #TODO DEFINE NUM STATES /  SAMPLE RATE IN ONE PLACE!
 CURRENT_FRAME_IDX = NUM_FRAMES_PER_STATE
 
-# The frequency at which the client asks for a response (i.e. if 1, then the client sends a request to the server every frame).
+# The frequency at which the client asks for a response (ex: if 1, the client sends a request to the server every frame)
 SAMPLE_RATE = 2
 
 LEARNING_RATE = 0.0001
 NUM_HIDDEN_UNITS = 256
 NUM_HIDDEN_UNITS_2 = 128
-NUM_HIDDEN_LAYERS = 2
 NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
 INPUT_LENGTH = (NUM_FRAMES_PER_STATE * (NUM_POSSIBLE_STATES + 13) * 2) # taken from number of non-state params in client data, multiplied by 2 players
 OUTPUT_LENGTH = 54 # taken from actions taken from gameConstants.lua
@@ -39,7 +38,7 @@ MINI_BATCH_SIZE = 32  # size of mini batches
 NUM_STEPS_FOR_TARGET_NETWORK = 2000
 STATUS_REPORT_INTERVAL = 2000
 SAVED_ITERATIONS = 100000
-DO_EPSILON_DECAY = False
+DO_EPSILON_DECAY = True
 EPSILON = 0.02
 
 PREVIOUS_INDEX = 0
@@ -56,7 +55,7 @@ class SSB_DQN:
     In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
     """
     def __init__(self, session, verbose=False):
-        self.rewarder = Rewarder(NUM_FRAMES_PER_STATE, SAMPLE_RATE)
+        self.rewarder = Rewarder(NUM_FRAMES_PER_STATE)
         self.experiences = deque()
         self.prev_state = None
         self.action_taken_from_prev_state = None

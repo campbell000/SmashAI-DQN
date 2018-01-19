@@ -6,8 +6,7 @@ NOTHING_REWARD = 0.000000 # Incentivize it to NOT die
 
 class Rewarder:
 
-    def __init__(self, num_frames_per_state, sample_rate, life_multiplier=1, damage_multiplier=0.001):
-        self.sample_rate = sample_rate
+    def __init__(self, num_frames_per_state, life_multiplier=1, damage_multiplier=0.001):
         self.num_frames_per_state = num_frames_per_state
         self.life_multiplier = life_multiplier
         self.damage_multiplier = damage_multiplier

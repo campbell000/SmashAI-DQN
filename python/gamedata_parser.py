@@ -6,7 +6,7 @@ INITIAL_STATE_VALUE_INDEX = 1
 INITIAL_PLAYER_VALUE_INDEX = 3
 
 NUM_PLAYERS = 2
-NUM_STATES = 2
+NUM_STATES = 2 #TODO DEFINE NUM STATES /  SAMPLE RATE IN ONE PLACE!
 
 class GameDataParser:
     # This function converts the POST data into a map with the following structure:
