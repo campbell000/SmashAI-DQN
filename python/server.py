@@ -23,7 +23,10 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
-        action, fields = GameDataParser.parse_client_data(data) # Parse the data into a map
+        game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
+        test_gamedata(game_data)
+        action = "OK"
+        fields = None
         response = None
 
         # If the action is train, train the bot and also retrieve a prediction for the client
@@ -49,14 +52,22 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+def test_gamedata(data):
+    for frame_num in sorted(data.get_current_state().get_frames()):
+        print("For Frame "+str(frame_num))
+        frame_data = data.get_current_state().get_frame(frame_num)
+        for player_num in sorted(frame_data.get_players()):
+            print("    For Player "+str(player_num))
+            player_data = frame_data.get_player(player_num)
+            for data_key in sorted(player_data.get_all_keys()):
+                print("        "+data_key+": "+str(player_data.get(data_key)))
+
 def transform_actions_for_client(action_arr):
     str_int_array = (str(int(e)) for e in action_arr)
     return ','.join(str_int_array)
 
 def run():
     print('starting server...')
-
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     sess = tf.Session(config=config)

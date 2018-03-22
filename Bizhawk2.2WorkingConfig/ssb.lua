@@ -10,7 +10,9 @@ local X = "X Axis"
 local Y = "Y Axis"
 local tfServerSampleIteration = 0
 local previousStateBuffer = List.newList()
+local currentStateBuffer = List.newList()
 local currentAction = INPUTS.CENTER_NOTHING
+local previousAction = "9"
 Game = {}
 
 -- CONSTANTS
@@ -18,9 +20,10 @@ Game = {}
 -- number is > 1, this means that the bot will HOLD down the current action N number of frames
 local TF_SERVER_SAMPLE_SKIP_RATE = 2
 
--- This variable is the number of game states we are sending to the tensorflow server. Note that the tensorflow server
--- needs to know this variable ahead of time to train the network.
-local GAME_STATE_BUFFER_SIZE = 2
+-- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
+-- A "state" is an abtract representation of the game at a specific point in time. A "frame" is a video-game specific
+-- term to represent one 'tick' of game time.
+local STATE_FRAME_SIZE = 2
 
 -- This function returns the player
 function Game.getPlayer(player)
@@ -201,31 +204,37 @@ function getGameStateMap()
 	local data = {}
 	-- For each player, gather everything we can about their states
 	for player = 1, 2 do
+		data[player] = {}
 		local key_prefix = tostring(player) -- prefix the keys with the current player so we can keep track of them.
-		data[key_prefix.."character"] = Game.getCharacter(player) -- categorical! This needs to be one-hot encoded
+		data[player]["character"] = Game.getCharacter(player) -- categorical! This needs to be one-hot encoded
 
 		-- Get position / velocity / accel for X and Y dimensions
 		local xdata = Game.getPlayerCoordinateData(player, 'x')
 		local ydata = Game.getPlayerCoordinateData(player, 'y')
-		data[key_prefix.."xp"] = xdata.pos
-		data[key_prefix.."xv"] = xdata.vel
-		data[key_prefix.."xa"] = xdata.acc
-		data[key_prefix.."yp"] = ydata.pos
-		data[key_prefix.."yv"] = ydata.vel
-		data[key_prefix.."ya"] = ydata.acc
+		data[player]["xp"] = xdata.pos
+		data[player]["xv"] = xdata.vel
+		data[player]["xa"] = xdata.acc
+		data[player]["yp"] = ydata.pos
+		data[player]["yv"] = ydata.vel
+		data[player]["ya"] = ydata.acc
 
 		-- Get movement / action states for the character
-		data[key_prefix.."state"] = Game.getMovementState(player) -- categorical! This needs to be one-hot encoded!
-		data[key_prefix.."shield_size"] = Game.getShieldSize(player)
-		data[key_prefix.."shield_recovery_time"] = Game.getShieldRecoveryTime(player)
-		data[key_prefix.."jumps_remaining"] = Game.getJumpsRemaining(player)
-		data[key_prefix.."direction"] = Game.getFacingDirection(player)
-		data[key_prefix.."state_frame"] = Game.getMovementFrame(player)
-		data[key_prefix.."is_in_air"] = Game.isInAir(player)
+		data[player]["state"] = Game.getMovementState(player) -- categorical! This needs to be one-hot encoded!
+		data[player]["shield_size"] = Game.getShieldSize(player)
+		data[player]["shield_recovery_time"] = Game.getShieldRecoveryTime(player)
+		data[player]["jumps_remaining"] = Game.getJumpsRemaining(player)
+		data[player]["direction"] = Game.getFacingDirection(player)
+		data[player]["state_frame"] = Game.getMovementFrame(player)
+		data[player]["is_in_air"] = Game.isInAir(player)
 
 		-- Finally, get current damage
-		data[key_prefix.."damage"] = Game.getDamage(player)
+		data[player]["damage"] = Game.getDamage(player)
 	end
+
+	-- TODO: do this better
+	-- With the current state, record the action that we took during the previous state
+	data[1]["prev_action_taken"] = previousAction
+
 	return data
 end
 
@@ -256,12 +265,14 @@ function do_button_presses(inputs, player)
 	joypad.setanalog(analog, player);
 end
 
--- This method applies the button presses to the game
+-- This method adds the current frame's information to the state buffer. If the state buffer is full,
+-- then the last state is popped (before that, we assign the previousStateBuffer as the value in
+-- currentStateBuffer).
 function add_game_state_to_state_buffer(data)
 	local popped = nil
-	List.pushright(previousStateBuffer, data)
-	if List.length(previousStateBuffer) > GAME_STATE_BUFFER_SIZE then
-		popped = List.popleft(previousStateBuffer)
+	List.pushright(currentStateBuffer, data)
+	if List.length(currentStateBuffer) > STATE_FRAME_SIZE then
+		popped = List.popleft(currentStateBuffer)
 	end
 	return popped
 end
@@ -269,22 +280,28 @@ end
 -- Main scripting loop
 while true do
 	-- Gather state data and add it to our state buffer (knocking out the oldest entry)
-    local data = getGameStateMap()
+	local data = getGameStateMap()
 	local popped_frame = add_game_state_to_state_buffer(data)
 
-	-- Do not ask for inputs or send data to train if we're reviving or we just died last frame
-	if Game.getMovementState(1) == 7 or (popped_frame ~= nil and popped_frame["1state"] <= 4) then
-		-- doing nothing
-	else
-		-- If we have all the states we need in the buffer, and we're not skipping this frame, then get our inputs from the server
-		if List.length(previousStateBuffer) == GAME_STATE_BUFFER_SIZE and tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0 then
-			local resp = TF_CLIENT.send_data_for_training(GAME_STATE_BUFFER_SIZE, previousStateBuffer)
+	-- Do not ask for inputs or send data to train if we're reviving or we just died last frame. In fact, clear the state buffer.
+	if Game.getMovementState(1) == 7 or (popped_frame ~= nil and popped_frame[1]["state"] <= 4) then
+		local a
+	elseif List.length(currentStateBuffer) == STATE_FRAME_SIZE and tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0 then
+		-- If we have all the states we need both buffers (previous and current), and we're not skipping this frame, then get our inputs from the server
+		if List.length(previousStateBuffer) == STATE_FRAME_SIZE  then
+			local resp = TF_CLIENT.send_data_for_training(STATE_FRAME_SIZE, currentStateBuffer, previousStateBuffer)
 			currentAction = parse_server_response_into_inputs(resp)
 			tfServerSampleIteration = 0
+
+			-- Record the fact that, for the current frame, we executed a specific action. This will be used by the server
+			-- the next time that we send data.
+			previousAction = currentAction
 		end
+
+		-- The previous state buffer needs to represent what we sent to the TF server LAST time we talked to it
+		previousStateBuffer = List.copy(currentStateBuffer)
 	end
 
-	dumpPlayerInfo(1)
 	-- Do the current action we have.
 	do_button_presses(currentAction, 1)
 
@@ -292,4 +309,6 @@ while true do
 	emu.frameadvance();
 
 	tfServerSampleIteration = tfServerSampleIteration + 1
+
+	dumpPlayerInfo(1)
 end

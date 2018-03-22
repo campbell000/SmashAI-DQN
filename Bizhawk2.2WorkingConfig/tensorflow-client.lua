@@ -10,43 +10,138 @@ local TRAIN = 0
 local EVAL = 1
 local HELLO = 2
 
-function dump(o)
-    if type(o) == 'table' then
-        local s = '{ '
-        for k,v in pairs(o) do
-            if type(k) ~= 'number' then k = '"'..k..'"' end
-            s = s .. '['..k..'] = ' .. dump(v) .. ','
+function dump(node)
+    -- to make output beautiful
+    local function tab(amt)
+        local str = ""
+        for i=1,amt do
+            str = str .. "\t"
         end
-        return s .. '} '
-    else
-        return tostring(o)
+        return str
     end
+
+    local cache, stack, output = {},{},{}
+    local depth = 1
+    local output_str = "{\n"
+
+    while true do
+        local size = 0
+        for k,v in pairs(node) do
+            size = size + 1
+        end
+
+        local cur_index = 1
+        for k,v in pairs(node) do
+            if (cache[node] == nil) or (cur_index >= cache[node]) then
+
+                if (string.find(output_str,"}",output_str:len())) then
+                    output_str = output_str .. ",\n"
+                elseif not (string.find(output_str,"\n",output_str:len())) then
+                    output_str = output_str .. "\n"
+                end
+
+                -- This is necessary for working with HUGE tables otherwise we run out of memory using concat on huge strings
+                table.insert(output,output_str)
+                output_str = ""
+
+                local key
+                if (type(k) == "number" or type(k) == "boolean") then
+                    key = "["..tostring(k).."]"
+                else
+                    key = "['"..tostring(k).."']"
+                end
+
+                if (type(v) == "number" or type(v) == "boolean") then
+                    output_str = output_str .. tab(depth) .. key .. " = "..tostring(v)
+                elseif (type(v) == "table") then
+                    output_str = output_str .. tab(depth) .. key .. " = {\n"
+                    table.insert(stack,node)
+                    table.insert(stack,v)
+                    cache[node] = cur_index+1
+                    break
+                else
+                    output_str = output_str .. tab(depth) .. key .. " = '"..tostring(v).."'"
+                end
+
+                if (cur_index == size) then
+                    output_str = output_str .. "\n" .. tab(depth-1) .. "}"
+                else
+                    output_str = output_str .. ","
+                end
+            else
+                -- close the table
+                if (cur_index == size) then
+                    output_str = output_str .. "\n" .. tab(depth-1) .. "}"
+                end
+            end
+
+            cur_index = cur_index + 1
+        end
+
+        if (size == 0) then
+            output_str = output_str .. "\n" .. tab(depth-1) .. "}"
+        end
+
+        if (#stack > 0) then
+            node = stack[#stack]
+            stack[#stack] = nil
+            depth = cache[node] == nil and depth + 1 or depth - 1
+        else
+            break
+        end
+    end
+
+    -- This is necessary for working with HUGE tables otherwise we run out of memory using concat on huge strings
+    table.insert(output,output_str)
+    output_str = table.concat(output)
+
+    print(output_str)
 end
 
-function CLIENT.convert_map_to_form_data(buffer_size, stateList, action)
-    local data = ""
-    local keyvals = {}
+function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, previousStateList, action)
+    local currkeyvals = {}
+    local prevkeyvals = {}
     local i = 1
+    local j = 1
 
     -- For each state, convert the key/values into form elements
     for state_num = 1, buffer_size do
-        local state = List.popleft(stateList)
-        for k, v in pairs(state) do
-            local key = "s"..state_num.."p"..k
-            keyvals[i] =  key.."="..v
-            i = (i + 1)
+        local state = List.popleft(currentStateList) -- Get state, which contains data for both players
+        for playerID, playerData in pairs(state) do -- for players 1 and 2....
+            for dataKey, dataValue in pairs(playerData) do
+                local key = "c["..(state_num - 1).."]".."["..playerID.."]["..dataKey.."]"
+                currkeyvals[i] =  key.."="..dataValue
+                i = (i + 1)
+            end
         end
-        List.pushright(stateList, state)
+        List.pushright(currentStateList, state)
+    end
+
+    for state_num = 1, buffer_size do
+        local state = List.popleft(previousStateList) -- Get state, which contains data for both players
+        for playerID, playerData in pairs(state) do -- for players 1 and 2....
+            for dataKey, dataValue in pairs(playerData) do
+                local key = "p["..(state_num - 1).."]".."["..playerID.."]["..dataKey.."]"
+                prevkeyvals[j] =  key.."="..dataValue
+                j = (j + 1)
+            end
+        end
+        List.pushright(previousStateList, state)
     end
 
     -- Format the form elements into something resembling a POST body
-    for i = 1, #keyvals do
-        data = data..keyvals[i].."&"
+    local buffer = {}
+    for i = 1, #currkeyvals do
+        buffer[#buffer+1] = currkeyvals[i].."&"
+    end
+
+    for j = 1, #prevkeyvals do
+        buffer[#buffer+1] = prevkeyvals[j].."&"
     end
 
     -- Add the action
-    data = data.."action="..action
-    return data
+    buffer[#buffer+1] = "action="..action
+    return table.concat(buffer)
 end
 
 function CLIENT.send_request_to_tensorflow_server(request_body)
@@ -68,8 +163,8 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 -- This function sends data to the server with the intention of training the model. It returns an output
-function CLIENT.send_data_for_training(buffer_size, data)
-    local request_body = CLIENT.convert_map_to_form_data(buffer_size, data, TRAIN)
+function CLIENT.send_data_for_training(buffer_size, currentState, prevState)
+    local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, prevState, TRAIN)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 

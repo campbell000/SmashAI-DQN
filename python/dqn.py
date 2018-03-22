@@ -16,7 +16,7 @@ import uuid
 #[s1:10, s2:20, s3:30, s4:40]
 
 # Number of frames the client is sending
-NUM_FRAMES_PER_STATE = 2 #TODO DEFINE NUM STATES /  SAMPLE RATE IN ONE PLACE!
+NUM_FRAMES_PER_STATE = 4 #TODO DEFINE NUM STATES /  SAMPLE RATE IN ONE PLACE!
 CURRENT_FRAME_IDX = NUM_FRAMES_PER_STATE
 
 # The frequency at which the client asks for a response (ex: if 1, the client sends a request to the server every frame)
