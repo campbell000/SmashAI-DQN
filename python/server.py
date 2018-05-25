@@ -24,19 +24,13 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
         game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
-        test_gamedata(game_data)
-        action = "OK"
-        fields = None
-        response = None
 
         # If the action is train, train the bot and also retrieve a prediction for the client
-        if action == TRAIN:
-            action_array = self.dqn_model.get_prediction(fields, do_train=True)
+        if game_data.get_action() == TRAIN:
+            action_array = self.dqn_model.get_prediction(game_data, do_train=True)
             response = transform_actions_for_client(action_array)
-
-        # Otherwise, simply get a prediction. Do not train the bot.
-        elif action == EVAL:
-            action_array = self.dqn_model.get_prediction(fields, do_train=False)
+        elif game_data.get_action() == EVAL:
+            action_array = self.dqn_model.get_prediction(game_data, do_train=False)
             response = transform_actions_for_client(action_array)
         else:
             print("Saying HELLO to the tensorflow client!")
@@ -53,9 +47,19 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         return
 
 def test_gamedata(data):
+    print("Current State: ")
     for frame_num in sorted(data.get_current_state().get_frames()):
         print("For Frame "+str(frame_num))
         frame_data = data.get_current_state().get_frame(frame_num)
+        for player_num in sorted(frame_data.get_players()):
+            print("    For Player "+str(player_num))
+            player_data = frame_data.get_player(player_num)
+            for data_key in sorted(player_data.get_all_keys()):
+                print("        "+data_key+": "+str(player_data.get(data_key)))
+    print("PRevious State: ")
+    for frame_num in sorted(data.get_previous_state().get_frames()):
+        print("For Frame "+str(frame_num))
+        frame_data = data.get_previous_state().get_frame(frame_num)
         for player_num in sorted(frame_data.get_players()):
             print("    For Player "+str(player_num))
             player_data = frame_data.get_player(player_num)

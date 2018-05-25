@@ -7,11 +7,33 @@ CURRENT_STRING = "c"
 PREVIOUS_STRING = "p"
 
 class GameDataParser:
+    """
+    A class to parse data received from the client. The data structure that this class produces is as follows:
+    - GameData:
+        - Current State:
+            - Frame 0:
+                - Player 1:
+                    - Data....
+                - Player 2:
+                    - Data...
+            - Frame 1:
+                ...
+        - Previous State:
+            - Frame 0:...
+            - Frame 1:...
+
+    The intent is to model the following: every GameData object has a "state". A state represents a current sampling
+    point for the machine learning algorithms. The "current" state is the state that we need to make a decision for,
+    while the "previous" state is the state that we JUST made a decision for. Each client keeps track of its current
+    and previous state.
+
+    Each state is comprised of one or more "frames". A "frame" is a specific point in time in the game state. A frame
+    contains data for multiple players. Each player knows about it's own state (x/y coords, action, character, etc).
+    """
 
     def parse_client_data(req):
         map = {}
         fields = parse_qs(req)
-        print(fields)
 
         # Get the action field and then remove it (it is not associated with a specific frame or player
         action = ast.literal_eval(fields["action"][0])
