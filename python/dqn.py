@@ -17,7 +17,7 @@ from gameprops.gameprops import *
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
-
+UPDATE_TARGET_INTERVAL = 2000
 
 class SSB_DQN:
     """
@@ -25,6 +25,7 @@ class SSB_DQN:
     In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
     """
     def __init__(self, session, gameprops, rewarder, verbose=False):
+        self.verbose = verbose
         self.rewarder = rewarder
         self.gameprops = gameprops
         self.experiences = deque()
@@ -58,6 +59,10 @@ class SSB_DQN:
         # Update the probability that we're going to perform a random action
         self.update_random_prob()
 
+        # Record some other things, like the reward for the current state
+        if self.verbose:
+            self.verbose_log_dump()
+
         return action
 
     def update_random_prob(self):
@@ -68,43 +73,84 @@ class SSB_DQN:
         # Choose either a random action, or an action produced by the network, based on chance
         action = np.zeros(self.gameprops.get_network_output_len())
         if random.random() <= self.current_random_action_prob:
+            self.logger.log_verbose("Chose random action "+str())
             random_action_id = random.randint(0,(self.gameprops.get_network_output_len() - 1))
             action[random_action_id] = 1
+            self.logger.log_verbose("Chose random action "+str(random_action_id)+", random probability is "+str(self.current_random_action_prob))
             return action
         else:
             # Prepare the current state's data as inputs into the network, and then get the network's output
-            tf_current_state = NNUtils.prepare_data_for_network(game_data.get_current_state())
-            output = self.model["output"].eval(feed_dict={self.model["x"]: [tf_current_state]})[0]
+            network_input = self.gameprops.convert_state_to_network_input(game_data.get_current_state())
+            output = self.model["output"].eval(feed_dict={self.model["x"]: [network_input]})[0]
             action_index = np.argmax(output)
+            self.logger.log_verbose("Chose optimal action "+str(action_index)+", random probability is "+str(self.current_random_action_prob))
             action[action_index] = 1
             return action
 
     def record_experience(self, new_game_data):
         self.num_iterations +=1
         self.experiences.append(new_game_data)
+        self.logger.log_verbose("Recording new Experience...has "+str(self.num_iterations)+" total")
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
         if self.num_iterations >= self.gameprops.get_experience_buffer_size():
             self.experiences.popleft()
 
     def train(self, game_data):
+        target_nn = self.target_model
+        training_nn = self.model
+
+        # Train only if we've collected enough observations
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
-            # Get the previous state, previous action, and rewards for the training process
             batch = self.get_sample_batch()
-            previous_states = [self.gameprops.convert_state_to_network_input(x) for x in sorted(batch.get_previous_state())]
-            previous_actions_taken = [NNUtils.get_one_hot(x) for x in sorted(batch.get_current_state().get_frames()[0]["prev_action_taken"])]
+
+            # Convert previous states for every experience in batch to inputs for the NN
+            previous_states = [self.gameprops.convert_state_to_network_input(x.get_previous_state()) for x in batch]
+
+            # Convert the previous actions taken (should be an integer) into a one-hot-encoded vector
+            previous_actions_taken = [NNUtils.get_one_hot(x.get_current_state().get_frames()[0]["prev_action_taken"]) for x in batch]
+
+            # Get current states, and the expected rewards (according to the Q-Network) for each action
+            current_states = [self.gameprops.convert_state_to_network_input(x.get_current_state()) for x in batch]
+            current_action_exp_rewards = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
+
+            # Calculate rewards for every experience in the batch
             rewards = [self.rewarder.calculate_reward(x) for x in batch]
+            agent_exp_rewards = np.zeros((len(batch)))
 
-            # TODO DO SOMETHING
+            # Calculate the reward for each experience in the batch
             for i in range(len(batch)):
-                # If the state is terminal (bot died)
+                # If the state is terminal (bot died), give the bot the reward for the state
+                if self.rewarder.experience_is_terminal(batch[i]):
+                    agent_exp_rewards[i] = rewards[i]
 
+                # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
+                else:
+                    agent_exp_rewards[i] = (self.gameprops.get_future_reward_discount() * np.max(current_action_exp_rewards[i]))
 
+            # Learn that the previous states/actions led to the calculated rewards
+            training_nn["sess"].run(training_nn["train"], feed_dict={
+                training_nn["x"] : previous_states,
+                training_nn["action"] : previous_actions_taken,
+                training_nn["target"] : agent_exp_rewards
+            })
+
+            # Every N iterations, update the training network with the model of the "real" network
+            if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
+                copy_ops = NNUtils.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
+                self.sess.run(copy_ops)
+        else:
+            self.logger.log_verbose("Not yet training....not enough experiences")
+
+    # Returns a sample batch to train on.
     def get_sample_batch(self):
         num_samples = self.gameprops.get_mini_batch_size()
         num_total_experiences = len(self.experiences)
         if num_total_experiences < self.gameprops.get_mini_batch_size():
             num_samples = num_total_experiences
         return random.sample(self.experiences, num_samples)
+
+    def verbose_log_dump(self):
+        print("HI")
 
 

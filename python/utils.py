@@ -12,5 +12,5 @@ class Logger:
         if self.verbose:
             print(message)
 
-    def log(self, ):
+    def log(self, message ):
         print(message)

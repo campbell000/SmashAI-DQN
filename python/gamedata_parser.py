@@ -39,6 +39,8 @@ class GameDataParser:
         action = ast.literal_eval(fields["action"][0])
         del fields['action'] # remove this field cause we don't need it anymore
 
+        # We're using maps to store the data, rather than arrays, because the data is not guaranteed to be in order.
+        # For example, frame 1's data might be interspersed with frame 0's data.
         for key in fields:
             state_type = "current" if key.startswith(CURRENT_STRING) else "previous"
             value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
@@ -101,8 +103,9 @@ class GameDataState:
     def get_num_frames(self):
         return len(self.frames.keys())
 
+    # Returns keys for frames, in order
     def get_frames(self):
-        return self.frames.keys()
+        return sorted(self.frames.keys())
 
 class GameDataFrame:
     def __init__(self):
@@ -117,8 +120,9 @@ class GameDataFrame:
         else:
             return False
 
+    # Returns keys for players, in order
     def get_players(self):
-        return self.players.keys()
+        return sorted(self.players.keys())
 
 class GamePlayerData:
     def __init__(self):
