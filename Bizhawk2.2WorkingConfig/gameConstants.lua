@@ -536,3 +536,20 @@ GameConstants = {
 	},
 };
 };
+
+PONG = {
+	playerOne = {
+		y = 0x00
+	},
+	playerTwo = {
+		y = 0x00
+	},
+	ball = {
+		x = 0x00,
+		y = 0x00
+	},
+	scores = {
+		playerOne = 0x00,
+		playerTwo = 0x00
+	}
+};
