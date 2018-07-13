@@ -5,6 +5,18 @@ N64 = {
 	RDRAMSize = 0x800000; -- Halved with no expansion pak, can be read from 0x80000318
 }
 
+PONG_INPUTS = {}
+PONG_INPUTS.DOWN_FAST = {["X Axis"] = 0, ["Y Axis"] = -127}
+PONG_INPUTS.DOWN_SLOW =  {["X Axis"] = 0, ["Y Axis"] = -30}
+PONG_INPUTS.UP_FAST =  {["X Axis"] = 0, ["Y Axis"] = 127}
+PONG_INPUTS.UP_FAST =  {["X Axis"] = 0, ["Y Axis"] = 30}
+PONG_INPUT_ORDER = {
+	[0] = PONG_INPUTS.DOWN_FAST,
+	[1] = PONG_INPUTS.DOWN_SLOW,
+	[2] =PONG_INPUTS.UP_FAST,
+	[3] =PONG_INPUTS.UP_FAST
+}
+
 INPUTS = {}
 INPUTS.RIGHT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
 INPUTS.RIGHT_UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}

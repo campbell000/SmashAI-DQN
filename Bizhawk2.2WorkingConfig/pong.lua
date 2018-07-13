@@ -7,11 +7,17 @@ require "utils";
 require "list"
 local TF_CLIENT = require("tensorflow-client")
 local tfServerSampleIteration = 0
-local previousStateBuffer = List.newList()
 local currentStateBuffer = List.newList()
 local currentAction = INPUTS.CENTER_NOTHING
-local previousAction = "9"
 Game = {}
+
+function RandomVariable(length)
+    local res = ""
+    for i = 1, length do
+        res = res .. string.char(math.random(97, 122))
+    end
+    return res
+end
 
 -- CONSTANTS
 -- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
@@ -23,7 +29,14 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 -- term to represent one 'tick' of game time.
 local STATE_FRAME_SIZE = 2
 
+-- local variable to turn off communication with the server. Used for debugging purposes
+local SEND_TO_SERVER = false
 
+local restarting = false
+local sentTerminalState = false
+local clientID = generateRandomString(12)
+
+-- memory locations, bitch
 local current_loc = 0x01C044
 local oneYpos_a = 0x01C070
 local oneYpos_b = 0x01C074
@@ -33,12 +46,15 @@ local ballYpos_a = 0x01C048
 local ballYpos_b = 0x01C04C
 local ballXpos_a = 0x01C050
 local ballXpos_b = 0x01C054
+local oneScore = 0x01C068
+local twoScore = 0x01C06C
+
 
 
 -- For some reason, this game stores the player's y positions, and the ball's x/y coords in two different places,
 -- and updates both of them in an alternating fashion (i.e. location a gets updated on frame one, location b gets updated
 -- on frame 2, location a gets updated on frame 3, etc).
-function get_player_1_ypos(resp)
+function get_player_1_ypos()
     local loc = mainmemory.read_u32_be(current_loc)
     if (loc == 1) then
         return mainmemory.read_u32_be(oneYpos_a)
@@ -48,7 +64,7 @@ function get_player_1_ypos(resp)
     end
 end
 
-function get_player_2_ypos(resp)
+function get_player_2_ypos()
     local loc = mainmemory.read_u32_be(current_loc)
     if (loc == 1) then
         return mainmemory.read_u32_be(twoYpos_a)
@@ -58,7 +74,7 @@ function get_player_2_ypos(resp)
     end
 end
 
-function get_ball_ypos(resp)
+function get_ball_ypos()
     local loc = mainmemory.read_u32_be(current_loc)
     if (loc == 1) then
         return mainmemory.read_u32_be(ballYpos_a)
@@ -68,7 +84,7 @@ function get_ball_ypos(resp)
     end
 end
 
-function get_ball_xpos(resp)
+function get_ball_xpos()
     local loc = mainmemory.read_u32_be(current_loc)
     if (loc == 1) then
         return mainmemory.read_u32_be(ballXpos_a)
@@ -76,6 +92,14 @@ function get_ball_xpos(resp)
     if (loc == 0) then
         return mainmemory.read_u32_be(ballXpos_b)
     end
+end
+
+function get_player_1_score()
+    return mainmemory.read_u32_be(oneScore)
+end
+
+function get_player_2_score()
+    return mainmemory.read_u32_be(twoScore)
 end
 
 -- This method parses the response from the Learning Server into button presses.
@@ -94,8 +118,7 @@ function parse_server_response_into_inputs(resp)
 end
 
 -- This method adds the current frame's information to the state buffer. If the state buffer is full,
--- then the last state is popped (before that, we assign the previousStateBuffer as the value in
--- currentStateBuffer).
+-- then the last state is popped
 function add_game_state_to_state_buffer(data)
     local popped = nil
     List.pushright(currentStateBuffer, data)
@@ -105,33 +128,118 @@ function add_game_state_to_state_buffer(data)
     return popped
 end
 
--- Main scripting loop
-while true do
-    -- Gather state data and add it to our state buffer (knocking out the oldest entry)
-    local data = getGameStateMap()
-    local popped_frame = add_game_state_to_state_buffer(data)
+function do_debug()
+    gui.drawString(0,40, "Player 1: " .. get_player_1_ypos(), null, null, 9)
+    gui.drawString(0,50, "Player 2: " .. get_player_2_ypos(), null, null, 9)
+    gui.drawString(0,60, "Ball X: " .. get_ball_xpos(), null, null, 9)
+    gui.drawString(0,70, "Ball Y: " .. get_ball_ypos(), null, null, 9)
+    gui.drawString(0,80, "Player One Score: " .. get_player_1_score(), null, null, 9)
+    gui.drawString(0,90, "Player Two Score: " .. get_player_2_score(), null, null, 9)
+end
 
-    if List.length(currentStateBuffer) == STATE_FRAME_SIZE and tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0 then
-        -- If we have all the states we need both buffers (previous and current), and we're not skipping this frame, then get our inputs from the server
-        if List.length(previousStateBuffer) == STATE_FRAME_SIZE  then
-            local resp = TF_CLIENT.send_data_for_training(STATE_FRAME_SIZE, currentStateBuffer, previousStateBuffer)
-            currentAction = parse_server_response_into_inputs(resp)
-            tfServerSampleIteration = 0
+function getGameStateMap()
+    local data = {}
+    data["1score"] = get_player_1_score()
+    data["1y"] = get_player_1_ypos()
+    data["2score"] = get_player_2_score()
+    data["2y"] = get_player_2_ypos()
+    data["ballx"] = get_ball_xpos()
+    data["bally"] = get_ball_ypos()
+    return data
+end
 
-            -- Record the fact that, for the current frame, we executed a specific action. This will be used by the server
-            -- the next time that we send data.
-            previousAction = currentAction
-        end
+function perform_action(player, action)
+    -- We are setting the analog stick to 0 for every input because, unlike buttons, we need to "unset" the analog stick
+    joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
 
-        -- The previous state buffer needs to represent what we sent to the TF server LAST time we talked to it
-        previousStateBuffer = List.copy(currentStateBuffer)
+    joypad.setanalog(PONG_INPUT_ORDER[action], player);
+end
+
+function game_is_over()
+    return get_player_1_score() == 10 or get_player_2_score() == 10
+end
+
+function gameNeedsToRestart()
+    if game_is_over() then
+        return true
+    else
+        return false
+    end
+end
+
+function game_has_loaded()
+    return get_player_1_ypos() ~= nil
+end
+
+function should_send_data_to_server()
+    -- If the debug flag is NOT set, then we need to first check to make sure that we have enough frames in the
+    -- current state bugger. Note that a "state" is a collection of one or more frames.
+    local buffersAreFull = List.length(currentStateBuffer) == STATE_FRAME_SIZE
+
+    -- We also need to make sure that we are sending data to the server at the specified rate. For example, if the
+    -- TF_SERVER_SAMPLE_SKIP_RATE equals '4', then we only send data to the server every 4 frames
+    local frameIterationisDone = tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0
+
+    -- Finally, we need to make sure that we only send ONE terminal state (i.e., when a player reaches 10).
+    -- If the current state has one player reaching 10, and we didn't yet send data, send it.end
+    local gameIsOver = get_player_1_score() == 10 or get_player_2_score() == 10
+    local haventSentTerminalState = (gameIsOver == false or sentTerminalState == false)
+
+    if buffersAreFull and frameIterationisDone and haventSentTerminalState then
+        return true
+    else
+        return false
     end
 
-    -- Do the current action we have.
-    do_button_presses(currentAction, 1)
+end
+
+-- Main scripting loop
+while true do
+    restarting = gameNeedsToRestart()
+    gui.drawString(0,220, "RESTART: " .. tostring(restarting), null, null, 12)
+    gui.drawString(0,210, "LOADED: " .. tostring(game_has_loaded()), null, null, 9)
+
+    -- If the game is currently in progress, then keep training as normal. Note that we still need to send the current state when
+    -- one of the players reaches 10. We just need to restart AFTER that happens.
+    if ((restarting == false or sentTerminalState == false) and game_has_loaded()) then
+        sentTerminalState = false -- set to false every frame to make debugging easier
+        do_debug()
+
+        -- Gather state data and add it to our state buffer (knocking out the oldest entry)
+        local data = getGameStateMap()
+        add_game_state_to_state_buffer(data)
+
+        -- If we have all the data we need, then send data to the server
+        if should_send_data_to_server() then
+            if SEND_TO_SERVER then -- Set to false to fake sending to the server
+                local resp = TF_CLIENT.send_data_for_training(STATE_FRAME_SIZE, currentStateBuffer)
+                currentAction = parse_server_response_into_inputs(resp)
+            end
+
+            -- If the game is over, then indicate that we just sent a terminal state. We don't want to send another one
+            -- until the game restarts
+            if game_is_over() then
+                sentTerminalState = true
+            end
+
+            tfServerSampleIteration = 0
+        end
+
+        -- Do the current action we have.
+        perform_action(currentAction, 1)
+
+        tfServerSampleIteration = tfServerSampleIteration + 1
+    else
+        -- Otherwise, keep pressing start until we trigger a new game
+        joypad.set({["Start"] = "True" }, 1)
+        gui.drawString(0,200, "Pressing Start! Get this shit over with!", null, null, 12)
+
+        -- If the game has loaded, then set the 'restarting' flag to false so that we can continue training
+        if game_has_loaded() and gameNeedsToRestart() == false then
+            restarting = false
+        end
+    end
 
     -- Do the next frame (and pray things don't break)
     emu.frameadvance();
-
-    tfServerSampleIteration = tfServerSampleIteration + 1
 end

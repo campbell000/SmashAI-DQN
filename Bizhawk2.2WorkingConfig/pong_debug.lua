@@ -12,6 +12,8 @@ local ballYpos_a = 0x01C048
 local ballYpos_b = 0x01C04C
 local ballXpos_a = 0x01C050
 local ballXpos_b = 0x01C054
+local oneScore = 0x01C068
+local twoScore = 0x01C06C
 
 
 -- For some reason, this game stores the player's y positions, and the ball's x/y coords in two different places,
@@ -57,11 +59,23 @@ function get_ball_xpos(resp)
     end
 end
 
+function get_player_1_score()
+    return mainmemory.read_u32_be(oneScore)
+end
+
+
+function get_player_2_score()
+    return mainmemory.read_u32_be(twoScore)
+end
+
+
 
 while true do
-    gui.drawString(0,40, "Player 1: " .. get_player_1_ypos(player), null, null, 9)
-    gui.drawString(0,50, "Player 2: " .. get_player_2_ypos(player), null, null, 9)
-    gui.drawString(0,60, "Ball X: " .. get_ball_xpos(player), null, null, 9)
-    gui.drawString(0,70, "Ball Y: " .. get_ball_ypos(player), null, null, 9)
+    gui.drawString(0,40, "Player 1: " .. get_player_1_ypos(), null, null, 9)
+    gui.drawString(0,50, "Player 2: " .. get_player_2_ypos(), null, null, 9)
+    gui.drawString(0,60, "Ball X: " .. get_ball_xpos(), null, null, 9)
+    gui.drawString(0,70, "Ball Y: " .. get_ball_ypos(), null, null, 9)
+    gui.drawString(0,80, "Player One Score: " .. get_player_1_score(), null, null, 9)
+    gui.drawString(0,90, "Player Two Score: " .. get_player_2_score(), null, null, 9)
     emu.frameadvance();
 end

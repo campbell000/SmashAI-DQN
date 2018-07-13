@@ -44,9 +44,8 @@ class GameDataParser:
         for key in fields:
             state_type = "current" if key.startswith(CURRENT_STRING) else "previous"
             value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
-            frame, player, dataKey = re.findall('\[(.*?)\]',key)
+            frame, dataKey = re.findall('\[(.*?)\]',key)
             frame = int(frame)
-            player = int(player) - 1 # the client starts at 1
 
             # Create GameDataState for the state if it doesn't exist.
             if state_type not in map:
@@ -57,18 +56,15 @@ class GameDataParser:
                 game_state.add_frame(frame)
 
             game_frame = game_state.get_frame(frame)
-            if (game_frame.get_player(player)) == False:
-                game_frame.add_player(player)
-
-            game_player = game_frame.get_player(player)
-            game_player.add(dataKey, value)
+            game_frame.add(dataKey, value)
 
         return GameData(map, action)
 
 class GameData:
-    def __init__(self, map, action):
+    def __init__(self, map, action, clientID):
         self.map = map
         self.action = action
+        self.clientID = clientID
 
     def get_current_state(self):
         return self.map["current"]
@@ -81,11 +77,10 @@ class GameData:
 
     def get_num_frames_per_state(self):
         num_frames_for_current = self.get_current_state().get_num_keys()
-        num_frames_for_prev = self.get_previous_state().get_num_keys()
-        if num_frames_for_current != num_frames_for_prev:
-            raise Exception("WHOA, THE PREVOUS AND CURRENT STATE HAVE DIFFERENT NUMBER OF FRAMES!")
-
         return num_frames_for_current
+
+    def get_clientID(self):
+        return self.clientID
 
 class GameDataState:
     def __init__(self):
@@ -109,23 +104,6 @@ class GameDataState:
 
 class GameDataFrame:
     def __init__(self):
-        self.players = {}
-
-    def add_player(self, playerID):
-        self.players[playerID] = GamePlayerData()
-
-    def get_player(self, playerID):
-        if  playerID in self.players:
-            return self.players[playerID]
-        else:
-            return False
-
-    # Returns keys for players, in order
-    def get_players(self):
-        return sorted(self.players.keys())
-
-class GamePlayerData:
-    def __init__(self):
         self.map = {}
 
     def add(self, key, value):
@@ -137,5 +115,21 @@ class GamePlayerData:
     def get_all_keys(self):
         return self.map.keys()
 
+class PongGameData:
+
+    def __init__(self, framedata):
+        self.framedata = framedata
+
+    def get_score(self, player):
+        return self.framedata.get(str(player)+"score")
+
+    def get_paddle_y_pos(self, player):
+        return self.framedata.get(str(player)+"y")
+
+    def get_ball_x_pos(self):
+        return self.framedata.get("ballx")
+
+    def get_ball_y_pos(self):
+        return self.framedata.get("bally")
 
 

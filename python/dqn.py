@@ -5,6 +5,7 @@ import tensorflow as tf
 from collections import deque
 import random
 from reward import Rewarder
+from gamedata_parser import *
 from evaluator import Evaluator
 from nn import NeuralNetwork
 from shared_constants import Constants
@@ -18,6 +19,38 @@ from gameprops.gameprops import *
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
 UPDATE_TARGET_INTERVAL = 2000
+
+class ClientData:
+    ACTION = 0
+    STATE = 1
+    def __init__(self):
+        self.data = {}
+
+    def get_prev_action(self, clientID):
+        return self.data[clientID][ClientData.ACTION]
+
+    def get_prev_state(self, clientID):
+        return self.data[clientID][ClientData.STATE]
+
+    def set_client_data(self, clientID, prev_state, prev_action):
+        self.data[clientID] = []
+        self.data[clientID][ClientData.STATE] = prev_state
+        self.data[clientID][ClientData.ACTION] = prev_action
+
+class Experience:
+    def __init__(self, current_state, previous_state, previous_action_taken):
+        self.current_state = current_state
+        self.previous_state = previous_state
+        self.previous_action_taken = previous_action_taken
+
+    def get_curr_state(self):
+        return self.current_state
+
+    def get_prev_state(self):
+        return self.previous_state
+
+    def get_action_taken(self):
+        return self.previous_action_taken
 
 class SSB_DQN:
     """
@@ -43,6 +76,7 @@ class SSB_DQN:
         #self.saver = tf.train.import_meta_graph("./ac48aea8-8f33-4054-a700-3a23a331eda7-1000000.meta")
         #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
+        self.client_data = ClientData()
 
     # Given a state, gets an action. Optionally, it also trains the Q-network if we are training (i.e. do_train=true)
     def get_prediction(self, game_data, do_train):
@@ -88,8 +122,14 @@ class SSB_DQN:
             return action
 
     def record_experience(self, new_game_data):
+        # an experience is made up of a current state, a previous state, and the action taken from the previous state to
+        # get to the current state
+        current_state = new_game_data.get_current_state()
+        previous_state = self.client_data.get_prev_state(new_game_data.get_clientID())
+        previous_action_taken = self.client_data.get_prev_action(new_game_data.get_clientID())
+        self.experiences.append(Experience(current_state, previous_state, previous_action_taken))
+
         self.num_iterations +=1
-        self.experiences.append(new_game_data)
         self.logger.log_verbose("Recording new Experience...has "+str(self.num_iterations)+" total")
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
@@ -105,16 +145,17 @@ class SSB_DQN:
             batch = self.get_sample_batch()
 
             # Convert previous states for every experience in batch to inputs for the NN
-            previous_states = [self.gameprops.convert_state_to_network_input(x.get_previous_state()) for x in batch]
+            previous_states = [self.gameprops.convert_state_to_network_input(x.get_prev_state()) for x in batch]
 
             # Convert the previous actions taken (should be an integer) into a one-hot-encoded vector
-            previous_actions_taken = [NNUtils.get_one_hot(x.get_current_state().get_frames()[0]["prev_action_taken"]) for x in batch]
+            previous_actions_taken = [NNUtils.get_one_hot(x.get_action_taken()) for x in batch]
 
             # Get current states, and the expected rewards (according to the Q-Network) for each action
-            current_states = [self.gameprops.convert_state_to_network_input(x.get_current_state()) for x in batch]
+            current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
             current_action_exp_rewards = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
 
             # Calculate rewards for every experience in the batch
+            # TODO: Revist this. Are we calculating rewards for the states in the batch, or are we using Q-values to do it?
             rewards = [self.rewarder.calculate_reward(x) for x in batch]
             agent_exp_rewards = np.zeros((len(batch)))
 
