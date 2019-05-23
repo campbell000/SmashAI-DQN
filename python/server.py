@@ -6,6 +6,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from dqn import SSB_DQN
 import tensorflow as tf
 from gamedata_parser import GameDataParser
+from gameprops.gameprops import *
+from gameprops.pong_gameprops import *
+from shared_constants import Constants
+from gamedata_parser import *
+from rewarder.rewarder import *
+from rewarder.pong_rewarder import *
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -23,18 +29,15 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
-        action, fields = GameDataParser.parse_client_data(data) # Parse the data into a map
-        response = None
+        game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
 
         # If the action is train, train the bot and also retrieve a prediction for the client
-        if action == TRAIN:
-            action_array = self.dqn_model.get_prediction(fields, do_train=True)
-            response = transform_actions_for_client(action_array)
-
-        # Otherwise, simply get a prediction. Do not train the bot.
-        elif action == EVAL:
-            action_array = self.dqn_model.get_prediction(fields, do_train=False)
-            response = transform_actions_for_client(action_array)
+        if game_data.get_client_action() == TRAIN:
+            action_index = self.dqn_model.get_prediction(game_data, do_train=True)
+            response = str(action_index)
+        elif game_data.get_client_action() == EVAL:
+            action_index = self.dqn_model.get_prediction(game_data, do_train=False)
+            response = str(action_index)
         else:
             print("Saying HELLO to the tensorflow client!")
             response = "HI FROM TENSORFLOW SERVER! THIS IS WHAT YOU SENT ME:\n"+str(data)
@@ -55,8 +58,6 @@ def transform_actions_for_client(action_arr):
 
 def run():
     print('starting server...')
-
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     sess = tf.Session(config=config)
@@ -66,7 +67,11 @@ def run():
         if len(sys.argv) >= 2 and sys.argv[1] == "verbose":
             verbose = True
 
-        dqn_model = SSB_DQN(sess, verbose=verbose)
+        ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
+        gameprops = PongGameProps()
+        rewarder = PongRewarder()
+
+        dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
 
         # Run Server
         server_address = ('0.0.0.0', PORT)

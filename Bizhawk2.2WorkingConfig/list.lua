@@ -42,3 +42,23 @@ function List.popright (list)
     list.last = last - 1
     return value
 end
+
+function List.copy(source)
+    local newCopy = List.newList()
+    for state_num = 1, List.length(source) do
+        local element = List.popleft(source)
+        List.pushright(source, element)
+        List.pushright(newCopy, element)
+    end
+    return newCopy
+end
+
+function List.dump(source)
+    for state_num = 1, List.length(source) do
+        local a = List.popleft(source)
+        print(a)
+        List.pushright(source,a)
+    end
+end
+
+

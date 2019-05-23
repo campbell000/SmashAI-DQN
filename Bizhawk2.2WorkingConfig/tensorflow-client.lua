@@ -10,43 +10,36 @@ local TRAIN = 0
 local EVAL = 1
 local HELLO = 2
 
-function dump(o)
-    if type(o) == 'table' then
-        local s = '{ '
-        for k,v in pairs(o) do
-            if type(k) ~= 'number' then k = '"'..k..'"' end
-            s = s .. '['..k..'] = ' .. dump(v) .. ','
-        end
-        return s .. '} '
-    else
-        return tostring(o)
-    end
-end
 
-function CLIENT.convert_map_to_form_data(buffer_size, stateList, action)
-    local data = ""
-    local keyvals = {}
+function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, clientID, action)
+    local currkeyvals = {}
     local i = 1
+    local j = 1
 
     -- For each state, convert the key/values into form elements
     for state_num = 1, buffer_size do
-        local state = List.popleft(stateList)
-        for k, v in pairs(state) do
-            local key = "s"..state_num.."p"..k
-            keyvals[i] =  key.."="..v
+        local state = List.popleft(currentStateList) -- Get state, which contains data for both players
+        for dataKey, dataValue in pairs(state) do
+            local key = "c["..(state_num - 1).."]".."["..dataKey.."]"
+            currkeyvals[i] =  key.."="..dataValue
             i = (i + 1)
         end
-        List.pushright(stateList, state)
+        List.pushright(currentStateList, state)
     end
 
     -- Format the form elements into something resembling a POST body
-    for i = 1, #keyvals do
-        data = data..keyvals[i].."&"
+    local buffer = {}
+    for i = 1, #currkeyvals do
+        buffer[#buffer+1] = currkeyvals[i].."&"
     end
 
     -- Add the action
-    data = data.."action="..action
-    return data
+    buffer[#buffer+1] = "action="..action
+
+    -- Add the client ID. Maybe
+    buffer[#buffer+1] = "&clientID="..clientID
+
+    return table.concat(buffer)
 end
 
 function CLIENT.send_request_to_tensorflow_server(request_body)
@@ -67,9 +60,9 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
     return response
 end
 
--- This function sends data to the server with the intention of training the model. It returns an output
-function CLIENT.send_data_for_training(buffer_size, data)
-    local request_body = CLIENT.convert_map_to_form_data(buffer_size, data, TRAIN)
+-- This function sends data to the server with the intention of training the model. It returns an action to perform as output
+function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
+    local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, TRAIN)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 

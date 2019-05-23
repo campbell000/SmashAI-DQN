@@ -39,7 +39,7 @@ class Rewarder:
         return 0
 
     # This method calculates the reward for an experience. It assumes that player 1 is the bot we want to train
-    def calculate_reward(self, experience, for_current_verbose=False):
+    def calculate_reward(self, experience):
         prev = experience[0]
         current = experience[1]
 
@@ -69,14 +69,6 @@ class Rewarder:
         # If the bot did not take damage and did not die, give it a little bit of a reward
         if damage_taken == 0 and is_bot_dead == 0:
             reward += NOTHING_REWARD
-
-        if for_current_verbose:
-            print("REWARDS FOR CURRENT experience: ")
-            print("damage_dealt: "+str(damage_dealt))
-            print("damage_taken: "+str(damage_taken))
-            print("is_bot_dead: "+str(is_bot_dead))
-            print("is_opponent_dead: "+str(is_opponent_dead))
-            print("TOTAL REWARD: "+str(reward))
 
         return reward
 

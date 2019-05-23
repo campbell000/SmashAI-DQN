@@ -5,247 +5,241 @@ import tensorflow as tf
 from collections import deque
 import random
 from reward import Rewarder
+from gamedata_parser import *
 from evaluator import Evaluator
 from nn import NeuralNetwork
+from shared_constants import Constants
 import nn as NN
+from nn_utils import NeuralNetworkUtils as NNUtils
 import os
 import uuid
-
-# NOTE: States pushed from the client are in order from least to most recent. Ex: the damages over 4 frames looks like this,
-# if the player were to get damaged by 10 every frame
-#[s1:10, s2:20, s3:30, s4:40]
-
-# Number of frames the client is sending
-NUM_FRAMES_PER_STATE = 2 #TODO DEFINE NUM STATES /  SAMPLE RATE IN ONE PLACE!
-CURRENT_FRAME_IDX = NUM_FRAMES_PER_STATE
-
-# The frequency at which the client asks for a response (ex: if 1, the client sends a request to the server every frame)
-SAMPLE_RATE = 2
-
-LEARNING_RATE = 0.0001
-NUM_HIDDEN_UNITS = 256
-NUM_HIDDEN_UNITS_2 = 128
-NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
-INPUT_LENGTH = (NUM_FRAMES_PER_STATE * (NUM_POSSIBLE_STATES + 13) * 2) # taken from number of non-state params in client data, multiplied by 2 players
-OUTPUT_LENGTH = 54 # taken from actions taken from gameConstants.lua
-EXPERIENCE_BUFFER_SIZE = 50000
-FUTURE_REWARD_DISCOUNT = 0.95  # decay rate of past observations
-OBSERVATION_STEPS = 1000  # time steps to observe before training
-EXPLORE_STEPS = 500000  # frames over which to anneal epsilon
-INITIAL_RANDOM_ACTION_PROB = 1.0  # starting chance of an action being random
-FINAL_RANDOM_ACTION_PROB = 0.01  # final chance of an action being random
-MINI_BATCH_SIZE = 32  # size of mini batches
-NUM_STEPS_FOR_TARGET_NETWORK = 2000
-STATUS_REPORT_INTERVAL = 2000
-SAVED_ITERATIONS = 100000
-DO_EPSILON_DECAY = True
-EPSILON = 0.02
-
-PREVIOUS_INDEX = 0
-CURRENT_INDEX = 1
-ACTION_FROM_PREVIOUS_INDEX = 2
-
+from utils import Logger
+from gameprops.gameprops import *
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
+UPDATE_TARGET_INTERVAL = 2000
+
+class ClientData:
+    ACTION = 0
+    STATE = 1
+    def __init__(self):
+        self.data = {}
+
+    def get_prev_action(self, clientID):
+        return self.data[clientID][ClientData.ACTION]
+
+    def get_prev_state(self, clientID):
+        return self.data[clientID][ClientData.STATE]
+
+    def set_client_data(self, clientID, prev_state, prev_action):
+        if not self.client_id_exists(clientID):
+            self.data[clientID] = [0, 0]
+
+        self.data[clientID][ClientData.STATE] = prev_state
+        self.data[clientID][ClientData.ACTION] = prev_action
+
+    def client_id_exists(self, clientID):
+        return clientID in self.data
+
+class Experience:
+    def __init__(self, current_state, previous_state, previous_action_taken):
+        self.current_state = current_state
+        self.previous_state = previous_state
+        self.previous_action_taken = previous_action_taken
+
+    def get_curr_state(self):
+        return self.current_state
+
+    def get_prev_state(self):
+        return self.previous_state
+
+    def get_action_taken(self):
+        return self.previous_action_taken
 
 class SSB_DQN:
     """
     Inspiration for this file comes from # https://github.com/DanielSlater/PyGamePlayer/blob/master/examples/deep_q_pong_player.py.
     In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
     """
-    def __init__(self, session, verbose=False):
-        self.rewarder = Rewarder(NUM_FRAMES_PER_STATE)
-        self.experiences = deque()
-        self.prev_state = None
-        self.action_taken_from_prev_state = None
-        self.current_random_action_prob = INITIAL_RANDOM_ACTION_PROB
+    def __init__(self, session, gameprops, rewarder, verbose=False):
         self.verbose = verbose
+        self.rewarder = rewarder
+        self.gameprops = gameprops
+        self.experiences = deque()
+        self.current_random_action_prob = 1
         self.evaluator = Evaluator(self.rewarder)
         self.print_once_map = {}
         self.num_iterations = 0
-        self.model = NeuralNetwork(MAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS_2, LEARNING_RATE).build_model()
-        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, INPUT_LENGTH, OUTPUT_LENGTH, NUM_HIDDEN_UNITS, NUM_HIDDEN_UNITS_2, LEARNING_RATE).build_model()
+
+        # Mutliply the input length by the number of frames per state. The input length is the length of one frame
+        self.model = NeuralNetwork(MAIN_NETWORK, session, gameprops.get_network_input_len(),
+                                   gameprops.get_network_output_len(), gameprops.get_learning_rate())
+        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, gameprops.get_network_input_len(),
+                                          gameprops.get_network_output_len(), gameprops.get_learning_rate())
         self.sess = session
-        self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver()
         self.saved_network_id = str(uuid.uuid4())
+        self.logger = Logger(verbose)
         #self.saver = tf.train.import_meta_graph("./ac48aea8-8f33-4054-a700-3a23a331eda7-1000000.meta")
         #self.saver.restore(self.sess, tf.train.latest_checkpoint("./12-10-911/"))
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
+        self.client_data = ClientData()
 
-    # Given a state, gets an action. Optionally, it also trains the Q-network
-    def get_prediction(self, current_state, do_train):
-        self.num_iterations += 1
-        self.print_once("started", "Got connection, started training")
+        # Build the NN models (idiot)
+        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
+        self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
+        self.sess.run(tf.global_variables_initializer())
+        self.saver = tf.train.Saver()
 
-        # if we have no previous states, then generate a random action and add it to our replay database.
-        action = None
-        if self.prev_state == None:
-            r = random.randint(0,(OUTPUT_LENGTH - 1))
-            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
-            action[r] = 1
-            self.log("First state ever, picking random action")
-        else:
-            action = self.do_dqn_iteration(current_state, do_train)
-
-            # Print out the reward every frame if we're in verbose mode
-            if self.verbose:
-                self.rewarder.calculate_reward([self.prev_state, current_state], True)
-
-        # Adjust the chance of choosing a random action
-        self.adjust_random_probability()
-
-        # Print Status Report
-        if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
-            self.status_report()
-
-        # Save the network every N iterations
-        if self.num_iterations % SAVED_ITERATIONS == 0:
-            self.save_network()
-
-        # Regardless of what we've done, update our previous state (and the action we took).
-        self.prev_state = current_state
-        self.action_taken_from_prev_state = action
-        return action
-
-    # This method performs one iteration of the DQN algorithm. It returns an action to perform by the client
-    def do_dqn_iteration(self, current_state, do_train):
-
-        # Add the experience to the replay database
-        new_experience = [self.prev_state, current_state, self.action_taken_from_prev_state]
-        self.add_experience(new_experience)
-
-        # Only train when we are done making our initial observations
-        if len(self.experiences) > OBSERVATION_STEPS and do_train:
-            self.print_once("started_training", "Training now because we have "+str(len(self.experiences))+" experiences")
+    # Given a state, gets an action. Optionally, it also trains the Q-network if we are training (i.e. do_train=true)
+    def get_prediction(self, game_data, do_train):
+        # If training, record the experience and do some training (yo)
+        if do_train:
+            self.record_experience(game_data)
             self.train()
+
+        # If we are done observing, picck the action to send back to the client based on the current state
+        if self.num_iterations > self.gameprops.get_num_obs_before_training():
+            action = self.get_action(game_data)
+            self.update_random_prob()
         else:
-            self.log("Still not training...only gathering data at "+str(len(self.experiences)))
+            action = self.get_random_action()
 
-        # get the next action based on a batch of samples in our replay DB
-        return self.choose_next_action(current_state)
+        # Record some other things, like the reward for the current state (do this before setting the previous state),
+        # as some of the outputs from the log will be wrong
+        if self.verbose:
+            self.verbose_log_dump(game_data)
 
-    # Adds an experience to the Experience DB. Experiences consist of two elements. The first element is previous data,
-    # the second is current data
-    def add_experience(self, experience):
-        self.experiences.append(experience)
-        if len(self.experiences) >= EXPERIENCE_BUFFER_SIZE:
-            self.experiences.popleft()
+        # print that bitch anyway if we're at the 10,000 interval
+        if self.num_iterations % 10000 == 0:
+            self.verbose_log_dump(game_data)
 
-    # This method returns an action to execute for the current state. It will either pick a random action, or an action
-    # based on the output of the NN.
-    def choose_next_action(self, current_state):
-        m = self.model
-        self.log("Choosing action based on current random probability: "+str(self.current_random_action_prob))
+        # record the chosen action and the current state for the current client
+        self.client_data.set_client_data(game_data.get_clientID(), game_data.get_current_state(), action)
 
-        # Based on self.current_random_action_prob, choose a random action OR chose an action based on the NN.
+        # convert the action (a one-hot array) into a single value for consumption by the client
+        return np.argmax(action)
+
+    def update_random_prob(self):
+        if self.current_random_action_prob > self.gameprops.get_epsilon_end():
+            self.current_random_action_prob -= self.gameprops.get_epsilon_step_size()
+
+    def get_action(self, game_data):
+        # Choose either a random action, or an action produced by the network, based on chance
+        action = np.zeros(self.gameprops.get_network_output_len())
         if random.random() <= self.current_random_action_prob:
-            self.log("Chose randomly")
-            r = random.randint(0,(OUTPUT_LENGTH - 1))
-            action = [0] * OUTPUT_LENGTH # Convert to list just to stay consistent
-            action[r] = 1
+            action = self.get_random_action()
             return action
         else:
-            # choose an action given our current state, using the output of the NN
-            self.log("Chose NOT randomly")
-            final_action = [0] * OUTPUT_LENGTH
-            tf_current_state = self.convert_client_data_to_tensorflow(current_state)
-            output = m["output"].eval(feed_dict={m["x"]: [tf_current_state]})[0]
-
-            # Convert the output into a one hot. The one hot index should be the index with the highest output
+            # Prepare the current state's data as inputs into the network, and then get the network's output
+            network_input = self.gameprops.convert_state_to_network_input(game_data.get_current_state())
+            output = self.model["output"].eval(feed_dict={self.model["x"]: [network_input]})[0]
             action_index = np.argmax(output)
-            final_action[action_index] = 1
-            return final_action
+            self.logger.log_verbose("Chose optimal action "+str(action_index)+", random probability is "+str(self.current_random_action_prob))
+            action[action_index] = 1
+            return action
 
-    # This method retrieves a sample batch of experiences from the experience replay DB
+    def get_random_action(self):
+        action = np.zeros(self.gameprops.get_network_output_len())
+        random_action_id = random.randint(0,(self.gameprops.get_network_output_len() - 1))
+        action[random_action_id] = 1
+        self.logger.log_verbose("Chose random action "+str(action))
+        return action
+
+    def record_experience(self, game_data):
+        # an experience is made up of a current state, a previous state, and the action taken from the previous state to
+        # get to the current state. If we have a previous state/action (we dont on the first connection), add it.
+        clientID = game_data.get_clientID()
+        if self.client_data.client_id_exists(clientID):
+            current_state = game_data.get_current_state()
+            previous_state = self.client_data.get_prev_state(clientID)
+            previous_action_taken = self.client_data.get_prev_action(clientID)
+            if (self.verbose):
+                print(current_state.get_frame(0).get("2score"))
+                print(previous_state.get_frame(0).get("2score"))
+            self.experiences.append(Experience(current_state, previous_state, previous_action_taken))
+
+        self.num_iterations +=1
+        self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
+        # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
+        # TODO: potential problem if running multiple clients
+        if self.num_iterations >= self.gameprops.get_experience_buffer_size():
+            self.experiences.popleft()
+
+    def train(self):
+        #target_nn = self.target_model
+        training_nn = self.model
+
+        # Train only if we've collected enough observations
+        if self.num_iterations > self.gameprops.get_num_obs_before_training():
+            batch = self.get_sample_batch()
+
+            # Convert previous states for every experience in batch to inputs for the NN
+            previous_states = [self.gameprops.convert_state_to_network_input(x.get_prev_state()) for x in batch]
+
+            # Convert the previous actions taken (should be an integer) into a one-hot-encoded vector
+            previous_actions_taken = [x.get_action_taken() for x in batch]
+
+            # Get current states, and the expected rewards (according to the Q-Network) for each action
+            current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
+            #agents_reward_per_action  = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
+            agents_reward_per_action = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+
+            # Calculate rewards for every experience in the batch
+            # TODO: Revist this. Are we calculating rewards for the states in the batch, or are we using Q-values to do it?
+            rewards = [self.rewarder.calculate_reward(x) for x in batch]
+            agent_exp_rewards = np.zeros((len(batch)))
+
+            # Calculate the reward for each experience in the batch
+            for i in range(len(batch)):
+                # If the state is terminal, give the bot the reward for the state
+                if self.rewarder.experience_is_terminal(batch[i]):
+                    agent_exp_rewards[i] = rewards[i]
+
+                # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
+                else:
+                    discount = self.gameprops.get_future_reward_discount()
+                    agent_exp_rewards[i] = rewards[i] + (discount * np.max(agents_reward_per_action[i]))
+
+            # Learn that the previous states/actions led to the calculated rewards
+            self.sess.run(training_nn["train"], feed_dict={
+                training_nn["x"] : previous_states,
+                training_nn["action"] : previous_actions_taken,
+                training_nn["actual_q_value"] : agent_exp_rewards
+            })
+
+            for a in tf.all_variables():
+                b = self.sess.run(a)
+                c = b
+
+
+            # Every N iterations, update the training network with the model of the "real" network
+            #if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
+            #    copy_ops = NNUtils.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
+            #    self.sess.run(copy_ops)
+        else:
+            self.logger.log_verbose("Not yet training....not enough experiences")
+
+    # Returns a sample batch to train on.
     def get_sample_batch(self):
-        num_samples = MINI_BATCH_SIZE
+        num_samples = self.gameprops.get_mini_batch_size()
         num_total_experiences = len(self.experiences)
-        if num_total_experiences < MINI_BATCH_SIZE:
+        if num_total_experiences < self.gameprops.get_mini_batch_size():
             num_samples = num_total_experiences
         return random.sample(self.experiences, num_samples)
 
-    # This function trains the NN that produces Q-values for every state/action pair.
-    def train(self):
-        m = self.model
-        t = self.target_model
+    def verbose_log_dump(self, game_data):
+        print("\n***Verbose Log Dump*** ")
+        print("Num Iterations: "+str(self.num_iterations))
+        print("DATA SENT TO PYTHON SERVER: "+str(game_data.get_raw_data()))
+        print("RANDOM PROB: "+str(self.current_random_action_prob))
 
-        # Get a mini_batch from the experience replay buffer per DQN
-        mini_batch = self.get_sample_batch()
+        # Calculate reward for current frame (unless we're on the first frame, since we can't compute reward)
+        if self.client_data.client_id_exists(game_data.get_clientID()):
+            experience = Experience(game_data.get_current_state(), self.client_data.get_prev_state(game_data.get_clientID()),
+                                    self.client_data.get_prev_action(game_data.get_clientID()))
+            reward = self.rewarder.calculate_reward(experience, True)
+            print("REWARD FOR CURRENT ITERATION: "+str(reward))
+            print("IS TERMINAL: "+str(self.rewarder.experience_is_terminal(experience)))
 
-        # Get the necessary data to do DQN
-        previous_states = [self.convert_client_data_to_tensorflow(x[PREVIOUS_INDEX]) for x in mini_batch]
-        previous_actions = [x[ACTION_FROM_PREVIOUS_INDEX] for x in mini_batch]
-        rewards = [self.rewarder.calculate_reward(x) for x in mini_batch]
-        current_states = [self.convert_client_data_to_tensorflow(x[CURRENT_INDEX]) for x in mini_batch]
-        agents_expected_reward = []
 
-        # Get the expected reward per action from the TARGET Q-Network
-        agents_reward_per_action = t["output"].eval(feed_dict={t["x"]: current_states})
-        for i in range(len(mini_batch)):
-            curr_experience = mini_batch[i]
-
-            # If the state is terminal (which means, if the bot died on the current frame), collect the reward
-            if self.rewarder.is_terminal(curr_experience):
-                agents_expected_reward.append(rewards[i])
-            else:
-                exp_reward = rewards[i] + (FUTURE_REWARD_DISCOUNT * np.max(agents_reward_per_action[i]))
-                agents_expected_reward.append(exp_reward)
-
-        # Learn that the actions in these states lead to the rewards
-        m["sess"].run(m["train"], feed_dict={
-            m["x"] : previous_states,
-            m["action"] : previous_actions,
-            m["target"] : agents_expected_reward
-        })
-
-        if self.num_iterations % STATUS_REPORT_INTERVAL == 0:
-            loss = m["sess"].run(m["loss"], feed_dict={
-                m["x"] : previous_states,
-                m["action"] : previous_actions,
-                m["target"] : agents_expected_reward
-            })
-            print("LOSS: "+str(loss))
-
-        # Every N iterations, update the training network with the model of the "real" network
-        if self.num_iterations % NUM_STEPS_FOR_TARGET_NETWORK == 0:
-            copy_ops = NN.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
-            self.sess.run(copy_ops)
-
-    # This method converts the data from the client into data for tensorflow.
-    def convert_client_data_to_tensorflow(self, data):
-        return NN.transform_client_data_for_tensorflow(data, NUM_POSSIBLE_STATES, verbose=self.verbose)
-
-    # Prints a status report to the screen
-    def status_report(self):
-        print("STATUS REPORT!")
-        print("Random Prob: "+str(self.current_random_action_prob))
-        print("NUM ITERATIONS: "+str(self.num_iterations))
-
-    # Saves the network (tensorflow variables)
-    def save_network(self):
-        path = self.current_dir + "/" + self.saved_network_id
-        self.saver.save(self.sess, path, global_step=self.num_iterations)
-
-    # This method adjusts the random probability of picking an action to anneal over time.
-    def adjust_random_probability(self):
-        if DO_EPSILON_DECAY:
-            if self.current_random_action_prob > FINAL_RANDOM_ACTION_PROB and len(self.experiences) > OBSERVATION_STEPS:
-                self.current_random_action_prob -= (INITIAL_RANDOM_ACTION_PROB - FINAL_RANDOM_ACTION_PROB) / EXPLORE_STEPS
-        else:
-            self.current_random_action_prob = EPSILON
-
-    # Set to true for more output while the training is ocurring.
-    def set_verbose(self, v):
-        self.verbose = v
-
-    def log(self, s):
-        if self.verbose:
-            print(s)
-
-    # Prints output to the screen one time
-    def print_once(self, key, msg):
-        if key not in self.print_once_map:
-            self.print_once_map[key] = 0
-            print(msg)
