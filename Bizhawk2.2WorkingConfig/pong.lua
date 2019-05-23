@@ -8,7 +8,7 @@ require "list"
 local TF_CLIENT = require("tensorflow-client")
 local tfServerSampleIteration = 0
 local currentStateBuffer = List.newList()
-local currentAction = INPUTS.CENTER_NOTHING
+local currentAction = 2 -- Start off doing nothing (PONG_INPUT_ORDER[2])
 Game = {}
 
 function RandomVariable(length)
@@ -25,12 +25,12 @@ end
 local TF_SERVER_SAMPLE_SKIP_RATE = 2
 
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
--- A "state" is an abtract representation of the game at a specific point in time. A "frame" is a video-game specific
+-- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 2
+local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
-local SEND_TO_SERVER = false
+local SEND_TO_SERVER = true
 
 local restarting = false
 local sentTerminalState = false
@@ -48,8 +48,39 @@ local ballXpos_a = 0x01C050
 local ballXpos_b = 0x01C054
 local oneScore = 0x01C068
 local twoScore = 0x01C06C
+local countdown_timer = 0x01BFE4
+local TIMER_START_VALUE = 300
+local make_random = true
+local high_y = 208
+local low_y = 54
+local total_height_of_field = high_y - low_y
+random_y_vel_choices = {-0.25, -0.12, 0, 0.12, 0.25}
 
 
+function make_pong_random()
+    if make_random and mainmemory.read_u32_be(countdown_timer) == TIMER_START_VALUE - 1 then
+        set_random_starting_vel()
+        make_random = false
+    elseif make_random == false and mainmemory.read_u32_be(countdown_timer) ~= TIMER_START_VALUE - 1 then
+        gui.drawString(0,120, "Getting ready to add randomly!", null, null, 9)
+        make_random = true
+    end
+end
+
+function set_random_starting_vel()
+    local value = math.random(1, #random_y_vel_choices)
+    mainmemory.write_s16_be(0x01C058, random_y_vel_choices[value])
+    gui.drawString(0,110, "Setting "..tostring(random_y_vel_choices[value]).." to ball's y vel", null, null, 9)
+end
+
+function waitingForBall()
+    local countdown = mainmemory.read_u32_be(countdown_timer)
+    if countdown < 260 then
+        return true
+    else
+        return false
+    end
+end
 
 -- For some reason, this game stores the player's y positions, and the ball's x/y coords in two different places,
 -- and updates both of them in an alternating fashion (i.e. location a gets updated on frame one, location b gets updated
@@ -84,6 +115,11 @@ function get_ball_ypos()
     end
 end
 
+function set_ball_ypos(value)
+    mainmemory.write_u32_be(ballYpos_a, value)
+    mainmemory.write_u32_be(ballYpos_b, value)
+end
+
 function get_ball_xpos()
     local loc = mainmemory.read_u32_be(current_loc)
     if (loc == 1) then
@@ -102,21 +138,6 @@ function get_player_2_score()
     return mainmemory.read_u32_be(twoScore)
 end
 
--- This method parses the response from the Learning Server into button presses.
-function parse_server_response_into_inputs(resp)
-    local tokens = split(resp, ",")
-    for i = 1, #tokens do
-        if tokens[i] == "1" then
-            input = INPUT_ORDER[i]
-            if input == nil then
-                print("WE DIDNT GET A VALID ACTION! SOMETHING IS WRONG!")
-            end
-            return input
-        end
-    end
-    print("WE GOT A RESPONSE FROM THE SERVER WITHOUT AN ACTION! SOMETHING IS WRONG!")
-end
-
 -- This method adds the current frame's information to the state buffer. If the state buffer is full,
 -- then the last state is popped
 function add_game_state_to_state_buffer(data)
@@ -129,12 +150,23 @@ function add_game_state_to_state_buffer(data)
 end
 
 function do_debug()
+    local serverAction = ""
+    if (currentAction == 0) then
+        serverAction = "DOWN"
+    elseif (currentAction == 1) then
+        serverAction = "UP"
+    else
+        serverAction = "CENTER"
+    end
+
     gui.drawString(0,40, "Player 1: " .. get_player_1_ypos(), null, null, 9)
     gui.drawString(0,50, "Player 2: " .. get_player_2_ypos(), null, null, 9)
     gui.drawString(0,60, "Ball X: " .. get_ball_xpos(), null, null, 9)
     gui.drawString(0,70, "Ball Y: " .. get_ball_ypos(), null, null, 9)
     gui.drawString(0,80, "Player One Score: " .. get_player_1_score(), null, null, 9)
     gui.drawString(0,90, "Player Two Score: " .. get_player_2_score(), null, null, 9)
+    gui.drawString(0,100, "Server Action: " .. serverAction, null, null, 9)
+    gui.drawString(0,130, "Countdown: " .. tostring(mainmemory.read_u32_be(countdown_timer)), null, null, 9)
 end
 
 function getGameStateMap()
@@ -148,11 +180,10 @@ function getGameStateMap()
     return data
 end
 
-function perform_action(player, action)
+function perform_action(player, actionIndex)
     -- We are setting the analog stick to 0 for every input because, unlike buttons, we need to "unset" the analog stick
     joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
-
-    joypad.setanalog(PONG_INPUT_ORDER[action], player);
+    joypad.setanalog(PONG_INPUT_ORDER[actionIndex], player);
 end
 
 function game_is_over()
@@ -195,44 +226,46 @@ end
 
 -- Main scripting loop
 while true do
+    make_pong_random()
     restarting = gameNeedsToRestart()
-    gui.drawString(0,220, "RESTART: " .. tostring(restarting), null, null, 12)
-    gui.drawString(0,210, "LOADED: " .. tostring(game_has_loaded()), null, null, 9)
 
     -- If the game is currently in progress, then keep training as normal. Note that we still need to send the current state when
     -- one of the players reaches 10. We just need to restart AFTER that happens.
     if ((restarting == false or sentTerminalState == false) and game_has_loaded()) then
         sentTerminalState = false -- set to false every frame to make debugging easier
-        do_debug()
 
         -- Gather state data and add it to our state buffer (knocking out the oldest entry)
-        local data = getGameStateMap()
-        add_game_state_to_state_buffer(data)
+        if waitingForBall() == false then
+            local data = getGameStateMap()
+            add_game_state_to_state_buffer(data)
 
-        -- If we have all the data we need, then send data to the server
-        if should_send_data_to_server() then
-            if SEND_TO_SERVER then -- Set to false to fake sending to the server
-                local resp = TF_CLIENT.send_data_for_training(STATE_FRAME_SIZE, currentStateBuffer)
-                currentAction = parse_server_response_into_inputs(resp)
+            -- If we have all the data we need, then send data to the server
+            if should_send_data_to_server() then
+                if SEND_TO_SERVER then -- Set to false to fake sending to the server
+                    local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
+
+                    currentAction = tonumber(resp)
+                end
+
+                -- If the game is over, then indicate that we just sent a terminal state. We don't want to send another one
+                -- until the game restarts
+                if game_is_over() then
+                    sentTerminalState = true
+                end
+
+                tfServerSampleIteration = 0
+
             end
 
-            -- If the game is over, then indicate that we just sent a terminal state. We don't want to send another one
-            -- until the game restarts
-            if game_is_over() then
-                sentTerminalState = true
-            end
-
-            tfServerSampleIteration = 0
+            -- Do the current action we have.
+            perform_action(1, currentAction)
+            tfServerSampleIteration = tfServerSampleIteration + 1
         end
 
-        -- Do the current action we have.
-        perform_action(currentAction, 1)
-
-        tfServerSampleIteration = tfServerSampleIteration + 1
+        do_debug()
     else
         -- Otherwise, keep pressing start until we trigger a new game
         joypad.set({["Start"] = "True" }, 1)
-        gui.drawString(0,200, "Pressing Start! Get this shit over with!", null, null, 12)
 
         -- If the game has loaded, then set the 'restarting' flag to false so that we can continue training
         if game_has_loaded() and gameNeedsToRestart() == false then

@@ -6,6 +6,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from dqn import SSB_DQN
 import tensorflow as tf
 from gamedata_parser import GameDataParser
+from gameprops.gameprops import *
+from gameprops.pong_gameprops import *
+from shared_constants import Constants
+from gamedata_parser import *
+from rewarder.rewarder import *
+from rewarder.pong_rewarder import *
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -26,12 +32,12 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
 
         # If the action is train, train the bot and also retrieve a prediction for the client
-        if game_data.get_action() == TRAIN:
-            action_array = self.dqn_model.get_prediction(game_data, do_train=True)
-            response = transform_actions_for_client(action_array)
-        elif game_data.get_action() == EVAL:
-            action_array = self.dqn_model.get_prediction(game_data, do_train=False)
-            response = transform_actions_for_client(action_array)
+        if game_data.get_client_action() == TRAIN:
+            action_index = self.dqn_model.get_prediction(game_data, do_train=True)
+            response = str(action_index)
+        elif game_data.get_client_action() == EVAL:
+            action_index = self.dqn_model.get_prediction(game_data, do_train=False)
+            response = str(action_index)
         else:
             print("Saying HELLO to the tensorflow client!")
             response = "HI FROM TENSORFLOW SERVER! THIS IS WHAT YOU SENT ME:\n"+str(data)
@@ -45,26 +51,6 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     # Silences logging
     def log_message(self, format, *args):
         return
-
-def test_gamedata(data):
-    print("Current State: ")
-    for frame_num in sorted(data.get_current_state().get_frames()):
-        print("For Frame "+str(frame_num))
-        frame_data = data.get_current_state().get_frame(frame_num)
-        for player_num in sorted(frame_data.get_players()):
-            print("    For Player "+str(player_num))
-            player_data = frame_data.get_player(player_num)
-            for data_key in sorted(player_data.get_all_keys()):
-                print("        "+data_key+": "+str(player_data.get(data_key)))
-    print("PRevious State: ")
-    for frame_num in sorted(data.get_previous_state().get_frames()):
-        print("For Frame "+str(frame_num))
-        frame_data = data.get_previous_state().get_frame(frame_num)
-        for player_num in sorted(frame_data.get_players()):
-            print("    For Player "+str(player_num))
-            player_data = frame_data.get_player(player_num)
-            for data_key in sorted(player_data.get_all_keys()):
-                print("        "+data_key+": "+str(player_data.get(data_key)))
 
 def transform_actions_for_client(action_arr):
     str_int_array = (str(int(e)) for e in action_arr)
@@ -81,7 +67,11 @@ def run():
         if len(sys.argv) >= 2 and sys.argv[1] == "verbose":
             verbose = True
 
-        dqn_model = SSB_DQN(sess, verbose=verbose)
+        ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
+        gameprops = PongGameProps()
+        rewarder = PongRewarder()
+
+        dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
 
         # Run Server
         server_address = ('0.0.0.0', PORT)

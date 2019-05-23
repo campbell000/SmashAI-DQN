@@ -38,6 +38,8 @@ class GameDataParser:
         # Get the action field and then remove it (it is not associated with a specific frame or player
         action = ast.literal_eval(fields["action"][0])
         del fields['action'] # remove this field cause we don't need it anymore
+        clientID = fields["clientID"][0]
+        del fields['clientID'] # remove this field cause we don't need it anymore
 
         # We're using maps to store the data, rather than arrays, because the data is not guaranteed to be in order.
         # For example, frame 1's data might be interspersed with frame 0's data.
@@ -58,19 +60,17 @@ class GameDataParser:
             game_frame = game_state.get_frame(frame)
             game_frame.add(dataKey, value)
 
-        return GameData(map, action)
+        return GameData(map, action, clientID, req)
 
 class GameData:
-    def __init__(self, map, action, clientID):
+    def __init__(self, map, action, clientID, rawData):
         self.map = map
         self.action = action
         self.clientID = clientID
+        self.raw_data = rawData
 
     def get_current_state(self):
         return self.map["current"]
-
-    def get_previous_state(self):
-        return self.map["previous"]
 
     def get_client_action(self):
         return self.action
@@ -81,6 +81,9 @@ class GameData:
 
     def get_clientID(self):
         return self.clientID
+
+    def get_raw_data(self):
+        return self.raw_data
 
 class GameDataState:
     def __init__(self):

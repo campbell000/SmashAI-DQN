@@ -1,6 +1,6 @@
 from rewarder.rewarder import *
 
-class SSBRewarder(Rewarder):
+class SSBRewarder(AbstractRewarder):
 
     def experience_is_terminal(self, experience):
         return True

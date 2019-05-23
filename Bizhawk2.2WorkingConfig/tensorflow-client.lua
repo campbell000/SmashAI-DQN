@@ -13,19 +13,16 @@ local HELLO = 2
 
 function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, clientID, action)
     local currkeyvals = {}
-    local prevkeyvals = {}
     local i = 1
     local j = 1
 
     -- For each state, convert the key/values into form elements
     for state_num = 1, buffer_size do
         local state = List.popleft(currentStateList) -- Get state, which contains data for both players
-        for playerID, playerData in pairs(state) do -- for players 1 and 2....
-            for dataKey, dataValue in pairs(playerData) do
-                local key = "c["..(state_num - 1).."]".."["..playerID.."]["..dataKey.."]"
-                currkeyvals[i] =  key.."="..dataValue
-                i = (i + 1)
-            end
+        for dataKey, dataValue in pairs(state) do
+            local key = "c["..(state_num - 1).."]".."["..dataKey.."]"
+            currkeyvals[i] =  key.."="..dataValue
+            i = (i + 1)
         end
         List.pushright(currentStateList, state)
     end
@@ -36,15 +33,11 @@ function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, clientID
         buffer[#buffer+1] = currkeyvals[i].."&"
     end
 
-    for j = 1, #prevkeyvals do
-        buffer[#buffer+1] = prevkeyvals[j].."&"
-    end
-
     -- Add the action
     buffer[#buffer+1] = "action="..action
 
     -- Add the client ID. Maybe
-    buffer[#buffer+1] = "clientID="..clientID
+    buffer[#buffer+1] = "&clientID="..clientID
 
     return table.concat(buffer)
 end
@@ -68,7 +61,7 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
 -- This function sends data to the server with the intention of training the model. It returns an action to perform as output
-function CLIENT.send_data_for_training(buffer_size, currentState, clientID)
+function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
     local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, TRAIN)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end

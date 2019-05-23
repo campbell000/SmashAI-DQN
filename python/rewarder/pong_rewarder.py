@@ -1,31 +1,31 @@
 from rewarder.rewarder import *
 from gameprops.gameprops import *
+from gameprops.pong_gameprops import *
 from gamedata_parser import *
 
-class PongRewarder(Rewarder):
+class PongRewarder(AbstractRewarder):
 
-    def __init__(self, num_frames_per_state):
-        super(Rewarder, self).__init__(num_frames_per_state)
+    def __init__(self):
+        super(AbstractRewarder, self).__init__()
 
     # the experience is termainl if one player has '10' in the current state (any frame).
     def experience_is_terminal(self, experience):
-        current_state = experience.get_current_state()
-        for frame_num in current_state.get_frames()
-            framedata = PongGameData(current_state.get_frame(frame_num))
-            player1_score = framedata.get_score(1)
-            player2_score = framedata.get_score(2)
-            if player1_score == 10 or player2_score == 10:
-                return True
-        return False
+        reward = self.calculate_reward(experience)
+        return reward != 0
 
     # Take the difference between the max scores for prev/current state. Each state could have multiple frames; we're
     # only concerned with the difference between the maxes of each state's frames
     # NOTE: reward is player 1-centric!
-    def calculate_reward(self, experience):
-        player1_max_prev = self.get_max_score_for_player_in_state(1, experience.get_previous_state())
-        player1_max_curr = self.get_max_score_for_player_in_state(1, experience.get_current_state())
-        player2_max_prev = self.get_max_score_for_player_in_state(2, experience.get_previous_state())
-        player2_max_curr = self.get_max_score_for_player_in_state(2, experience.get_current_state())
+    def calculate_reward(self, experience, verbose=False):
+
+        player1_max_prev = self.get_max_score_for_player_in_state(1, experience.get_prev_state())
+        player1_max_curr = self.get_max_score_for_player_in_state(1, experience.get_curr_state())
+        player2_max_prev = self.get_max_score_for_player_in_state(2, experience.get_prev_state())
+        player2_max_curr = self.get_max_score_for_player_in_state(2, experience.get_curr_state())
+
+        if (verbose):
+            print("player1: maxprev,maxcurr = "+str(player1_max_prev)+","+str(player1_max_curr))
+            print("player2: maxprev,maxcurr = "+str(player2_max_prev)+","+str(player2_max_curr))
 
         # detect game restarts! if the maximum score for the current frame is 0, then the reward is ALWAYS 0.
         # This is prevent false rewards in cases where the scores get reset (i.e. player 1 has 10 points, but then
@@ -39,7 +39,7 @@ class PongRewarder(Rewarder):
     def get_max_score_for_player_in_state(self, player, state):
         scores = []
         for frame_num in state.get_frames():
-            framedata = PongGameData(current_state.get_frame(frame_num))
+            framedata = PongGameData(state.get_frame(frame_num))
             scores.append(int(framedata.get_score(player)))
         return max(scores)
 

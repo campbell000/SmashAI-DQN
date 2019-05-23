@@ -21,5 +21,5 @@ class NeuralNetworkUtils:
         return op_holder
 
     @staticmethod
-    def get_one_hot(value, num_states):
-        return np.eye(num_states)[value]
+    def get_one_hot(value, num_possible_classes):
+        return np.eye(num_possible_classes)[value]
