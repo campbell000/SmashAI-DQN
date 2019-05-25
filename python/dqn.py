@@ -202,9 +202,8 @@ class SSB_DQN:
                     agent_exp_rewards[i] = rewards[i] + (discount * np.max(agents_reward_per_action[i]))
 
             # Learn that the previous states/actions led to the calculated rewards
-            self.sess.run(training_nn["train"], feed_dict={
+            self.sess.run(self.get_map()["train"], feed_dict={
                 training_nn["x"] : previous_states,
-                training_nn["action"] : previous_actions_taken,
                 training_nn["actual_q_value"] : agent_exp_rewards
             })
 
