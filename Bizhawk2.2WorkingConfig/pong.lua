@@ -54,7 +54,7 @@ local make_random = true
 local high_y = 208
 local low_y = 54
 local total_height_of_field = high_y - low_y
-random_y_vel_choices = {-0.25, -0.12, 0, 0.12, 0.25}
+random_y_vel_choices = {-1, 0, 1}
 
 
 function make_pong_random()

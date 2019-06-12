@@ -11,15 +11,15 @@ class GameProps():
     # Initialize defaults for all of the variables
     def __init__(self, gameType, network_input_len, network_output_len):
         self.gameType = gameType
-        self.learning_rate = 1e-4
+        self.learning_rate = 0.0001
         self.network_input_length = network_input_len
         self.network_output_length = network_output_len
 
-        self.experience_buffer_size = 10000
-        self.future_reward_discount = 0.99
-        self.mini_batch_size = 100
-        self.num_obs_before_training = 10000
-        self.num_steps_epislon_decay = 500000
+        self.experience_buffer_size = 100000
+        self.future_reward_discount = 0.95
+        self.mini_batch_size = 32
+        self.num_obs_before_training = 100
+        self.num_steps_epislon_decay = 1000000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
 

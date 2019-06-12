@@ -86,7 +86,7 @@ class SSB_DQN:
         self.client_data = ClientData()
 
         # Build the NN models (idiot)
-        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
+        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=True)
         self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -174,43 +174,33 @@ class SSB_DQN:
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
             batch = self.get_sample_batch()
 
-            # Convert previous states for every experience in batch to inputs for the NN
+            # get previous states, actions, and current states
             previous_states = [self.gameprops.convert_state_to_network_input(x.get_prev_state()) for x in batch]
-
-            # Convert the previous actions taken (should be an integer) into a one-hot-encoded vector
-            previous_actions_taken = [x.get_action_taken() for x in batch]
-
-            # Get current states, and the expected rewards (according to the Q-Network) for each action
             current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
-            #agents_reward_per_action  = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
-            agents_reward_per_action = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+            previous_actions_taken = [x.get_action_taken() for x in batch]
+            rewards = [self.rewarder.calculate_reward(x) for x in batch] #TODO IS THIS RIGHT?
 
-            # Calculate rewards for every experience in the batch
-            # TODO: Revist this. Are we calculating rewards for the states in the batch, or are we using Q-values to do it?
-            rewards = [self.rewarder.calculate_reward(x) for x in batch]
-            agent_exp_rewards = np.zeros((len(batch)))
+            qvals = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+            ybatch = []
 
             # Calculate the reward for each experience in the batch
             for i in range(len(batch)):
+                target = None
                 # If the state is terminal, give the bot the reward for the state
                 if self.rewarder.experience_is_terminal(batch[i]):
-                    agent_exp_rewards[i] = rewards[i]
+                    ybatch.append(rewards[i])
 
                 # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
                 else:
                     discount = self.gameprops.get_future_reward_discount()
-                    agent_exp_rewards[i] = rewards[i] + (discount * np.max(agents_reward_per_action[i]))
+                    ybatch.append(rewards[i] + (discount * np.amax(qvals[i])))
 
             # Learn that the previous states/actions led to the calculated rewards
-            self.sess.run(self.get_map()["train"], feed_dict={
+            self.sess.run(training_nn["train"], feed_dict={
                 training_nn["x"] : previous_states,
-                training_nn["actual_q_value"] : agent_exp_rewards
+                training_nn["action"] : previous_actions_taken,
+                training_nn["actual_q_value"] : ybatch
             })
-
-            for a in tf.all_variables():
-                b = self.sess.run(a)
-                c = b
-
 
             # Every N iterations, update the training network with the model of the "real" network
             #if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:

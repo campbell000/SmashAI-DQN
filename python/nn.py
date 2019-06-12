@@ -15,69 +15,21 @@ class NeuralNetwork:
         self.session = session
         self.is_training = is_training
         self.dropout_rate = dropout_rate
-        self.map = {}
+        self.map = None
 
     def get_map(self):
         return self.map
 
-    # This method builds and returns the model for estimating Q values
-    def build_model_no_dropout(self, num_layers, nodes_per_layer):
-        with tf.variable_scope(self.name):
-            x = tf.placeholder(tf.float32, [None, self.input_length]) # rows of input vectors
-            selected_action = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
-            actual_q_values_for_action_taken = tf.placeholder(tf.float32, [None]) # should be rows of one value
-            predicted_q_value_for_taken_action = tf.placeholder(tf.float32, [None])
-            layers = []
-
-            # Create X numbers of layers
-            print(num_layers)
-            print(nodes_per_layer)
-            prev_drop_layer = None
-            for layer in range(num_layers):
-                num_nodes = nodes_per_layer[layer]
-
-                # If first layer, use the NN's input
-                if prev_drop_layer is None:
-                    hidden_layer = tf.layers.dense(x, num_nodes, activation=tf.nn.relu)
-                else:
-                    hidden_layer = tf.layers.dense(prev_drop_layer, num_nodes, activation=tf.nn.relu)
-
-                layers.append(["layer "+str(layer), hidden_layer])
-                prev_drop_layer = hidden_layer
-
-            # Use the last dropout layer to create the final output layer
-            output_layer = tf.layers.dense(prev_drop_layer, self.output_length)
-            layers.append(["final output layer", output_layer])
-
-            loss = tf.reduce_mean(tf.square(actual_q_values_for_action_taken - output_layer))
-
-            # Set up training operation
-            train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
-
-            self.map =  {
-                "layers" : layers,
-                "c" : [self.input_length, self.output_length],
-                "x" : x,
-                "actual_q_value" : actual_q_values_for_action_taken,
-                "predicted_q_value" : predicted_q_value_for_taken_action,
-                "output" : output_layer,
-                "loss" : loss,
-                "train" : train,
-                "action" : selected_action
-            }
-
-            return map
 
     def predict(self, state):
         return self.map["output"].eval(feed_dict={self.map["x"]: state})
 
     # This method builds and returns the model for estimating Q values
-    def build_model(self, num_layers, nodes_per_layer):
+    def build_model(self, num_layers, nodes_per_layer, include_dropout=True):
         with tf.variable_scope(self.name):
             x = tf.placeholder(tf.float32, [None, self.input_length]) # rows of input vectors
-            selected_action = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
-            actual_q_values_for_action_taken = tf.placeholder(tf.float32, [None]) # should be rows of one value
-            predicted_q_value_for_taken_action = tf.placeholder(tf.float32, [None])
+            actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
+            rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
 
             # Create X numbers of layers
@@ -94,41 +46,31 @@ class NeuralNetwork:
                     hidden_layer = tf.layers.dense(prev_drop_layer, num_nodes, activation=tf.nn.relu)
 
                 layers.append(["layer "+str(layer), hidden_layer])
-                hidden_dropout = tf.layers.dropout(hidden_layer, rate=self.dropout_rate, training=self.is_training)
-                prev_drop_layer = hidden_dropout
-                layers.append(["dropout "+str(layer), hidden_dropout])
+                if include_dropout:
+                    hidden_dropout = tf.layers.dropout(hidden_layer, rate=self.dropout_rate, training=self.is_training)
+                    prev_drop_layer = hidden_dropout
+                    layers.append(["dropout "+str(layer), hidden_dropout])
+                else:
+                    prev_drop_layer = hidden_layer
 
             # Use the last dropout layer to create the final output layer
             output_layer = tf.layers.dense(prev_drop_layer, self.output_length)
             layers.append(["final output layer", output_layer])
 
-            loss = tf.reduce_mean(tf.square(actual_q_values_for_action_taken - output_layer))
+            q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
+            loss = tf.reduce_mean(tf.square(rewards - q_action))
 
             # Set up training operation
             train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
 
-            self.map =  {
+            self.map = {
                 "layers" : layers,
                 "c" : [self.input_length, self.output_length],
                 "x" : x,
-                "actual_q_value" : actual_q_values_for_action_taken,
-                "predicted_q_value" : predicted_q_value_for_taken_action,
+                "actual_q_value" : rewards,
                 "output" : output_layer,
                 "loss" : loss,
                 "train" : train,
-                "action" : selected_action
+                "action" : actions
             }
-
-            return map
-
-            return {
-                "layers" : layers,
-                "c" : [self.input_length, self.output_length],
-                "x" : x,
-                "actual_q_value" : actual_q_values_for_action_taken,
-                "predicted_q_value" : predicted_q_value_for_taken_action,
-                "output" : output_layer,
-                "loss" : loss,
-                "train" : train,
-                "action" : selected_action
-            }
+            return self.map

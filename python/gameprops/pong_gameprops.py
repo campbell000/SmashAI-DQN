@@ -14,7 +14,7 @@ class PongGameProps(GameProps):
 
         # Pong should only need one smaller hidden layer
         self.num_hidden_layers = 2
-        self.set_hidden_units_array([10, 6])
+        self.set_hidden_units_array([128, 128])
 
     # format the data like this: [p1score, p1pos, p2score, p2pos, ballx, bally] for each frame in the state
     def convert_state_to_network_input(self, state):
