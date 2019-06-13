@@ -26,7 +26,7 @@ class GameProps():
         # based on https://stats.stackexchange.com/questions/181/how-to-choose-the-number-of-hidden-layers-and-nodes-in-a-feedforward-neural-netw
         num_hidden = int(self.network_input_length * .6666)
         self.num_hidden_layers = 2
-        self.hidden_units_arr = [ num_hidden, int(num_hidden/2)]
+        self.hidden_units_arr = [num_hidden, int(num_hidden/2)]
 
     def convert_state_to_network_input(self, state):
         pass

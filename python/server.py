@@ -8,10 +8,12 @@ import tensorflow as tf
 from gamedata_parser import GameDataParser
 from gameprops.gameprops import *
 from gameprops.pong_gameprops import *
+from gameprops.ssb_gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 from rewarder.rewarder import *
 from rewarder.pong_rewarder import *
+from rewarder.ssb_rewarder import *
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -68,8 +70,8 @@ def run():
             verbose = True
 
         ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
-        gameprops = PongGameProps()
-        rewarder = PongRewarder()
+        gameprops = SSBGameProps()
+        rewarder = SSBRewarder()
 
         dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
 

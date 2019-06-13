@@ -8,7 +8,7 @@ require "list"
 local TF_CLIENT = require("tensorflow-client")
 local tfServerSampleIteration = 0
 local currentStateBuffer = List.newList()
-local currentAction = 2 -- Start off doing nothing (PONG_INPUT_ORDER[2])
+local currentAction = 32 -- Start off doing nothing (INPUT_ORDER[32] == CENTER NOTHING)
 Game = {}
 
 function RandomVariable(length)
@@ -32,8 +32,6 @@ local STATE_FRAME_SIZE = 4
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
 
-local restarting = false
-local sentTerminalState = false
 local clientID = generateRandomString(12)
 
 -- This function returns the player
@@ -190,6 +188,38 @@ function Game.isInAir(player)
     end
 end
 
+function getGameStateMap()
+    local data = {}
+    -- For each player, gather everything we can about their states
+    for player = 1, 2 do
+        data[tostring(player).."char"] = Game.getCharacter(player) -- categorical! This needs to be one-hot encoded
+
+        -- Get position / velocity / accel for X and Y dimensions
+        local xdata = Game.getPlayerCoordinateData(player, 'x')
+        local ydata = Game.getPlayerCoordinateData(player, 'y')
+        data[tostring(player).."xp"] = xdata.pos
+        data[tostring(player).."xv"] = xdata.vel
+        data[tostring(player).."xa"] = xdata.acc
+        data[tostring(player).."yp"] = ydata.pos
+        data[tostring(player).."yv"] = ydata.vel
+        data[tostring(player).."ya"] = ydata.acc
+
+        -- Get movement / action states for the character
+        data[tostring(player).."state"] = Game.getMovementState(player)
+        data[tostring(player).."shld"] = Game.getShieldSize(player)
+        data[tostring(player).."shld_rec"] = Game.getShieldRecoveryTime(player)
+        data[tostring(player).."jumps_remaining"] = Game.getJumpsRemaining(player)
+        data[tostring(player).."direction"] = Game.getFacingDirection(player)
+        data[tostring(player).."jumps"] = Game.getMovementFrame(player)
+        data[tostring(player).."is_in_air"] = Game.isInAir(player)
+        data[tostring(player).."state_frame"] = Game.getMovementFrame(player)
+
+        -- Finally, get current damage
+        data[tostring(player).."damage"] = Game.getDamage(player)
+    end
+    return data
+end
+
 function dumpPlayerInfo(player)
     gui.drawString(0,0, "Character: " .. Game.getCharacterName(player), null, null, 9)
 
@@ -256,12 +286,7 @@ function should_send_data_to_server(popped_frame)
     end
 end
 
-
-function game_has_loaded()
-    return get_player_1_ypos() ~= nil
-end
-
-function should_send_data_to_server()
+function should_send_data_to_server(popped_frame)
     -- If the debug flag is NOT set, then we need to first check to make sure that we have enough frames in the
     -- current state bugger. Note that a "state" is a collection of one or more frames.
     local buffersAreFull = List.length(currentStateBuffer) == STATE_FRAME_SIZE
@@ -270,11 +295,10 @@ function should_send_data_to_server()
     -- TF_SERVER_SAMPLE_SKIP_RATE equals '4', then we only send data to the server every 4 frames
     local frameIterationisDone = tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0
 
-    -- Finally, we need to make sure that we only send ONE terminal state (i.e., when a player reaches 10).
-    -- If the current state has one player reaching 10, and we didn't yet send data, send it.end
-    local gameIsOver = get_player_1_score() == 10 or get_player_2_score() == 10
+    -- if we're respawning or just died, don't send anything to the server
+    local playerHasDied = Game.getMovementState(1) == 7 or (popped_frame ~= nil and popped_frame["1state"] <= 4)
 
-    if buffersAreFull and frameIterationisDone and gameIsOver then
+    if buffersAreFull and frameIterationisDone and not playerHasDied then
         return true
     else
         return false
@@ -293,19 +317,13 @@ end
 while true do
     -- Gather state data and add it to our state buffer (knocking out the oldest entry)
     local data = getGameStateMap()
-    add_game_state_to_state_buffer(data)
+    local popped_frame = add_game_state_to_state_buffer(data)
 
     -- If we have all the data we need, then send data to the server
-    if should_send_data_to_server() then
+    if should_send_data_to_server(popped_frame) then
         if SEND_TO_SERVER then -- Set to false to fake sending to the server
             local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
             currentAction = convertServerResponseToAction(resp)
-        end
-
-        -- If the game is over, then indicate that we just sent a terminal state. We don't want to send another one
-        -- until the game restarts
-        if game_is_over() then
-            sentTerminalState = true
         end
         tfServerSampleIteration = 0
     end
@@ -314,7 +332,7 @@ while true do
     tfServerSampleIteration = tfServerSampleIteration + 1
 
     -- print some shit on the screen
-    do_debug()
+    dumpPlayerInfo(1)
 
     -- Do the next frame (and pray things don't break)
     emu.frameadvance();

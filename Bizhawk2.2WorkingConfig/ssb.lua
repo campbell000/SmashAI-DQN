@@ -227,16 +227,6 @@ function getGameStateMap()
 		data[player]["jumps"] = Game.getMovementFrame(player)
 		data[player]["is_in_air"] = Game.isInAir(player)
 
-
-		tf_data.append(player_data["shld"])
-		tf_data.append(player_data["shld_rec"])
-		tf_data.append(player_data["dir"])
-		tf_data.append(player_data["jumps"])
-		tf_data.append(player_data["dmg"])
-		tf_data.append(player_data["state"])
-		tf_data.append(player_data["is_air"])
-
-
 		-- Finally, get current damage
 		data[player]["damage"] = Game.getDamage(player)
 	end
