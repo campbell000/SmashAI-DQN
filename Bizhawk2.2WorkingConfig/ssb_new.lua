@@ -208,14 +208,14 @@ function getGameStateMap()
         data[tostring(player).."state"] = Game.getMovementState(player)
         data[tostring(player).."shld"] = Game.getShieldSize(player)
         data[tostring(player).."shld_rec"] = Game.getShieldRecoveryTime(player)
-        data[tostring(player).."jumps_remaining"] = Game.getJumpsRemaining(player)
-        data[tostring(player).."direction"] = Game.getFacingDirection(player)
+        data[tostring(player).."jumps"] = Game.getJumpsRemaining(player)
+        data[tostring(player).."dir"] = Game.getFacingDirection(player)
         data[tostring(player).."jumps"] = Game.getMovementFrame(player)
-        data[tostring(player).."is_in_air"] = Game.isInAir(player)
+        data[tostring(player).."is_air"] = Game.isInAir(player)
         data[tostring(player).."state_frame"] = Game.getMovementFrame(player)
 
         -- Finally, get current damage
-        data[tostring(player).."damage"] = Game.getDamage(player)
+        data[tostring(player).."dmg"] = Game.getDamage(player)
     end
     return data
 end

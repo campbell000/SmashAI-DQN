@@ -110,9 +110,10 @@ class SSB_DQN:
         if self.verbose:
             self.verbose_log_dump(game_data)
 
-        # print that bitch anyway if we're at the 10,000 interval
+        # print that bitch anyway if we're at the 10,000 interval. Also do some savin
         if self.num_iterations % 10000 == 0:
             self.verbose_log_dump(game_data)
+            save_path = self.saver.save(self.sess, "~/saved_model.ckpt")
 
         # record the chosen action and the current state for the current client
         self.client_data.set_client_data(game_data.get_clientID(), game_data.get_current_state(), action)
@@ -157,14 +158,21 @@ class SSB_DQN:
             if (self.verbose):
                 print(current_state.get_frame(0).get("2score"))
                 print(previous_state.get_frame(0).get("2score"))
-            self.experiences.append(Experience(current_state, previous_state, previous_action_taken))
+            new_experience = Experience(current_state, previous_state, previous_action_taken)
+            self.experiences.append(new_experience)
+            # TODO uncomment for debugging rewards
+            # debug_reward = self.rewarder.calculate_reward(new_experience, True)
+            # print("Reward for current iteration: "+str(debug_reward))
 
         self.num_iterations +=1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
+
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
         if self.num_iterations >= self.gameprops.get_experience_buffer_size():
             self.experiences.popleft()
+
+
 
     def train(self):
         #target_nn = self.target_model

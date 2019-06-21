@@ -18,7 +18,7 @@ class GameProps():
         self.experience_buffer_size = 100000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 100
+        self.num_obs_before_training = 10000
         self.num_steps_epislon_decay = 1000000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
