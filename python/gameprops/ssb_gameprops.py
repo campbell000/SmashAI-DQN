@@ -19,8 +19,9 @@ class SSBGameProps(GameProps):
         super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
 
         # Pong should only need one smaller hidden layer
-        self.num_hidden_layers = 3
-        self.set_hidden_units_array([4000, 2000, 1000])
+        self.num_hidden_layers = 4
+        self.set_hidden_units_array([10000, 5000, 5000, 5000])
+        self.future_reward_discount = 1 - 1e-3
 
     def get_num_possible_states(self):
         return self.num_possible_states

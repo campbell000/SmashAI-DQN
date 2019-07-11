@@ -10,3 +10,4 @@ python/average_q_values.txt
 python/loss.txt
 python/avg_reward.txt
 python/__pycache__/*
+__pycache__/

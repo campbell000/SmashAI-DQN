@@ -18,7 +18,7 @@ from gameprops.gameprops import *
 
 MAIN_NETWORK = "main"
 TRAIN_NETWORK = "TRAIN"
-UPDATE_TARGET_INTERVAL = 2000
+UPDATE_TARGET_INTERVAL = 10000
 
 class ClientData:
     ACTION = 0
@@ -86,8 +86,8 @@ class SSB_DQN:
         self.client_data = ClientData()
 
         # Build the NN models (idiot)
-        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=True)
-        self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
+        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=False)
+        self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=False)
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
 
@@ -161,8 +161,8 @@ class SSB_DQN:
             new_experience = Experience(current_state, previous_state, previous_action_taken)
             self.experiences.append(new_experience)
             # TODO uncomment for debugging rewards
-            # debug_reward = self.rewarder.calculate_reward(new_experience, True)
-            # print("Reward for current iteration: "+str(debug_reward))
+            debug_reward = self.rewarder.calculate_reward(new_experience, True)
+            print("Reward for current iteration: "+str(debug_reward))
 
         self.num_iterations +=1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
@@ -171,8 +171,6 @@ class SSB_DQN:
         # TODO: potential problem if running multiple clients
         if self.num_iterations >= self.gameprops.get_experience_buffer_size():
             self.experiences.popleft()
-
-
 
     def train(self):
         #target_nn = self.target_model
@@ -186,7 +184,7 @@ class SSB_DQN:
             previous_states = [self.gameprops.convert_state_to_network_input(x.get_prev_state()) for x in batch]
             current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
             previous_actions_taken = [x.get_action_taken() for x in batch]
-            rewards = [self.rewarder.calculate_reward(x) for x in batch] #TODO IS THIS RIGHT?
+            rewards = [self.rewarder.calculate_reward(x) for x in batch]
 
             qvals = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
             ybatch = []
@@ -211,9 +209,9 @@ class SSB_DQN:
             })
 
             # Every N iterations, update the training network with the model of the "real" network
-            #if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
-            #    copy_ops = NNUtils.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
-            #    self.sess.run(copy_ops)
+            if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
+                copy_ops = NNUtils.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
+                self.sess.run(copy_ops)
         else:
             self.logger.log_verbose("Not yet training....not enough experiences")
 

@@ -11,7 +11,7 @@ class GameProps():
     # Initialize defaults for all of the variables
     def __init__(self, gameType, network_input_len, network_output_len):
         self.gameType = gameType
-        self.learning_rate = 0.0001
+        self.learning_rate = 1e-4
         self.network_input_length = network_input_len
         self.network_output_length = network_output_len
 
