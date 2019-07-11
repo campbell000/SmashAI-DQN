@@ -220,11 +220,11 @@ function getGameStateMap()
 
 		-- Get movement / action states for the character
 		data[player]["state"] = Game.getMovementState(player) -- categorical! This needs to be one-hot encoded!
-		data[player]["shield_size"] = Game.getShieldSize(player)
-		data[player]["shield_recovery_time"] = Game.getShieldRecoveryTime(player)
+		data[player]["shld"] = Game.getShieldSize(player)
+		data[player]["shld_rec"] = Game.getShieldRecoveryTime(player)
 		data[player]["jumps_remaining"] = Game.getJumpsRemaining(player)
 		data[player]["direction"] = Game.getFacingDirection(player)
-		data[player]["state_frame"] = Game.getMovementFrame(player)
+		data[player]["jumps"] = Game.getMovementFrame(player)
 		data[player]["is_in_air"] = Game.isInAir(player)
 
 		-- Finally, get current damage

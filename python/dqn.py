@@ -86,7 +86,7 @@ class SSB_DQN:
         self.client_data = ClientData()
 
         # Build the NN models (idiot)
-        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
+        self.model = self.model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=True)
         self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array())
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -110,9 +110,10 @@ class SSB_DQN:
         if self.verbose:
             self.verbose_log_dump(game_data)
 
-        # print that bitch anyway if we're at the 10,000 interval
+        # print that bitch anyway if we're at the 10,000 interval. Also do some savin
         if self.num_iterations % 10000 == 0:
             self.verbose_log_dump(game_data)
+            save_path = self.saver.save(self.sess, "~/saved_model.ckpt")
 
         # record the chosen action and the current state for the current client
         self.client_data.set_client_data(game_data.get_clientID(), game_data.get_current_state(), action)
@@ -157,14 +158,21 @@ class SSB_DQN:
             if (self.verbose):
                 print(current_state.get_frame(0).get("2score"))
                 print(previous_state.get_frame(0).get("2score"))
-            self.experiences.append(Experience(current_state, previous_state, previous_action_taken))
+            new_experience = Experience(current_state, previous_state, previous_action_taken)
+            self.experiences.append(new_experience)
+            # TODO uncomment for debugging rewards
+            # debug_reward = self.rewarder.calculate_reward(new_experience, True)
+            # print("Reward for current iteration: "+str(debug_reward))
 
         self.num_iterations +=1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
+
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
         if self.num_iterations >= self.gameprops.get_experience_buffer_size():
             self.experiences.popleft()
+
+
 
     def train(self):
         #target_nn = self.target_model
@@ -174,44 +182,33 @@ class SSB_DQN:
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
             batch = self.get_sample_batch()
 
-            # Convert previous states for every experience in batch to inputs for the NN
+            # get previous states, actions, and current states
             previous_states = [self.gameprops.convert_state_to_network_input(x.get_prev_state()) for x in batch]
-
-            # Convert the previous actions taken (should be an integer) into a one-hot-encoded vector
-            previous_actions_taken = [x.get_action_taken() for x in batch]
-
-            # Get current states, and the expected rewards (according to the Q-Network) for each action
             current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
-            #agents_reward_per_action  = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
-            agents_reward_per_action = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+            previous_actions_taken = [x.get_action_taken() for x in batch]
+            rewards = [self.rewarder.calculate_reward(x) for x in batch] #TODO IS THIS RIGHT?
 
-            # Calculate rewards for every experience in the batch
-            # TODO: Revist this. Are we calculating rewards for the states in the batch, or are we using Q-values to do it?
-            rewards = [self.rewarder.calculate_reward(x) for x in batch]
-            agent_exp_rewards = np.zeros((len(batch)))
+            qvals = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+            ybatch = []
 
             # Calculate the reward for each experience in the batch
             for i in range(len(batch)):
+                target = None
                 # If the state is terminal, give the bot the reward for the state
                 if self.rewarder.experience_is_terminal(batch[i]):
-                    agent_exp_rewards[i] = rewards[i]
+                    ybatch.append(rewards[i])
 
                 # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
                 else:
                     discount = self.gameprops.get_future_reward_discount()
-                    agent_exp_rewards[i] = rewards[i] + (discount * np.max(agents_reward_per_action[i]))
+                    ybatch.append(rewards[i] + (discount * np.amax(qvals[i])))
 
             # Learn that the previous states/actions led to the calculated rewards
             self.sess.run(training_nn["train"], feed_dict={
                 training_nn["x"] : previous_states,
                 training_nn["action"] : previous_actions_taken,
-                training_nn["actual_q_value"] : agent_exp_rewards
+                training_nn["actual_q_value"] : ybatch
             })
-
-            for a in tf.all_variables():
-                b = self.sess.run(a)
-                c = b
-
 
             # Every N iterations, update the training network with the model of the "real" network
             #if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:

@@ -1,18 +1,26 @@
 from gameprops.gameprops import *
 from shared_constants import Constants
 from nn_utils import *
+import numpy as np
 
 # A subclass of the GameProps specific to Super Smash Brothers for the Nintendo 64 Entertainment System (tm) (c).
 # We need to know the number of possible states (which varies depending on character), as well
 class SSBGameProps(GameProps):
 
-    def __init__(self, gameType, network_output_len, num_possible_states):
+    def __init__(self):
         # First, calculate the number of inputs based on the number of possible states
-        self.num_possible_states = num_possible_states
-        input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 13) * 2) # taken from number of non-state params in client data, multiplied by 2 players
+        NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
+        OUTPUT_LENGTH = 54 # based on number of possible inputs in gameConstants.lua
+        self.num_possible_states = NUM_POSSIBLE_STATES
+        # taken from number of non-state params in client data, multiplied by 2 players
+        input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 14) * 2)
 
         # After that, call the superclass' init method as normal
-        super(SSBGameProps, self).__init__(gameType, input_length, network_output_len)
+        super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
+
+        # Pong should only need one smaller hidden layer
+        self.num_hidden_layers = 3
+        self.set_hidden_units_array([4000, 2000, 1000])
 
     def get_num_possible_states(self):
         return self.num_possible_states
@@ -21,25 +29,27 @@ class SSBGameProps(GameProps):
     def convert_state_to_network_input(self, state):
         # Iterate through each state's frames, and then through each player's data
         tf_data = []
-        for frame in sorted(state.get_frames()):
-            for player_data in sorted(frame.get_players()):
-                # Append numeric data to vector. DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
-                tf_data.append(player_data["xp"])
-                tf_data.append(player_data["xv"])
-                tf_data.append(player_data["xa"])
-                tf_data.append(player_data["yp"])
-                tf_data.append(player_data["yv"])
-                tf_data.append(player_data["ya"])
-                tf_data.append(player_data["shield_size"])
-                tf_data.append(player_data["shield_recovery_time"])
-                tf_data.append(player_data["direction"])
-                tf_data.append(player_data["jumps_remaining"])
-                tf_data.append(player_data["damage"])
-                tf_data.append(player_data["state_frame"])
-                tf_data.append(player_data["is_in_air"])
+        for i in range(state.get_num_frames()):
+            data = state.get_frame(i)
+            # Append numeric data to vector. DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
+            for player_id in range(1, 3):
+                tf_data.append(data.get(str(player_id)+"xp"))
+                tf_data.append(data.get(str(player_id)+"xv"))
+                tf_data.append(data.get(str(player_id)+"xa"))
+                tf_data.append(data.get(str(player_id)+"yp"))
+                tf_data.append(data.get(str(player_id)+"yv"))
+                tf_data.append(data.get(str(player_id)+"ya"))
+                tf_data.append(data.get(str(player_id)+"shld"))
+                tf_data.append(data.get(str(player_id)+"shld_rec"))
+                tf_data.append(data.get(str(player_id)+"dir"))
+                tf_data.append(data.get(str(player_id)+"jumps"))
+                tf_data.append(data.get(str(player_id)+"dmg"))
+                tf_data.append(data.get(str(player_id)+"state"))
+                tf_data.append(data.get(str(player_id)+"is_air"))
+                tf_data.append(data.get(str(player_id)+"state_frame"))
 
                 # Convert the categorical state variable into binary data
-                tf_data = tf_data + self.convert_state_to_vector(player_data["state"], self.num_possible_states)
+                tf_data = tf_data + self.convert_state_to_vector(data.get(str(player_id)+"state"), self.num_possible_states)
         return tf_data
 
     # This method converts the state of the player into a one-hot vector. Required since
