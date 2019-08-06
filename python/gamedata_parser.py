@@ -112,6 +112,9 @@ class GameDataFrame:
     def add(self, key, value):
         self.map[key] = value
 
+    def set(self, key, value):
+        self.add(key, value)
+
     def get(self, key):
         return self.map[key]
 

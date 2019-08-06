@@ -15,9 +15,9 @@ import os
 import uuid
 from utils import Logger
 from gameprops.gameprops import *
-
+import datetime
 MAIN_NETWORK = "main"
-TRAIN_NETWORK = "TRAIN"
+TARGET_NETWORK = "target"
 UPDATE_TARGET_INTERVAL = 10000
 
 class ClientData:
@@ -75,7 +75,7 @@ class SSB_DQN:
         # Mutliply the input length by the number of frames per state. The input length is the length of one frame
         self.model = NeuralNetwork(MAIN_NETWORK, session, gameprops.get_network_input_len(),
                                    gameprops.get_network_output_len(), gameprops.get_learning_rate())
-        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, gameprops.get_network_input_len(),
+        self.target_model = NeuralNetwork(TARGET_NETWORK, session, gameprops.get_network_input_len(),
                                           gameprops.get_network_output_len(), gameprops.get_learning_rate())
         self.sess = session
         self.saved_network_id = str(uuid.uuid4())
@@ -90,18 +90,32 @@ class SSB_DQN:
         self.target_model = self.target_model.build_model(gameprops.get_num_hidden_layers(), gameprops.get_hidden_units_array(), include_dropout=False)
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
+        self.reward_log_path = "./reward_log.txt"
+        gameprops.dump()
 
     # Given a state, gets an action. Optionally, it also trains the Q-network if we are training (i.e. do_train=true)
     def get_prediction(self, game_data, do_train):
         # If training, record the experience and do some training (yo)
+        new_experience = None
         if do_train:
-            self.record_experience(game_data)
+            new_experience = self.record_experience(game_data)
             self.train()
 
-        # If we are done observing, picck the action to send back to the client based on the current state
+        # If we are done observing, pick the action to send back to the client based on the current state
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
+            # get action based on policy
             action = self.get_action(game_data)
             self.update_random_prob()
+
+            # log the reward we're getting based on some criteria
+            if new_experience is not None and self.rewarder.should_record_reward_in_log(new_experience):
+                reward_differential = self.rewarder.get_reward_for_log(new_experience)
+                with open("reward_log.txt", 'a') as file:
+                    num_iters_training = self.num_iterations - self.gameprops.get_num_obs_before_training()
+                    string = str(datetime.datetime.now().timestamp())+", "+str(num_iters_training)+", "+str(reward_differential)
+                    print("Printing out "+string+" to reward file")
+                    file.write(string+"\n")
+
         else:
             action = self.get_random_action()
 
@@ -111,9 +125,9 @@ class SSB_DQN:
             self.verbose_log_dump(game_data)
 
         # print that bitch anyway if we're at the 10,000 interval. Also do some savin
-        if self.num_iterations % 10000 == 0:
+        if self.num_iterations % 2000 == 0:
             self.verbose_log_dump(game_data)
-            save_path = self.saver.save(self.sess, "~/saved_model.ckpt")
+            save_path = self.saver.save(self.sess, "saved_sessions/saved_model.ckpt")
 
         # record the chosen action and the current state for the current client
         self.client_data.set_client_data(game_data.get_clientID(), game_data.get_current_state(), action)
@@ -122,8 +136,14 @@ class SSB_DQN:
         return np.argmax(action)
 
     def update_random_prob(self):
+        do_finetune = self.gameprops.get_finetuned_epsilon_end() != None
         if self.current_random_action_prob > self.gameprops.get_epsilon_end():
             self.current_random_action_prob -= self.gameprops.get_epsilon_step_size()
+        elif do_finetune and self.current_random_action_prob > self.gameprops.get_finetuned_epsilon_end():
+            self.current_random_action_prob -= self.gameprops.get_finetuned_step_size()
+
+    def get_random_action_prob(self):
+        return self.current_random_action_prob
 
     def get_action(self, game_data):
         # Choose either a random action, or an action produced by the network, based on chance
@@ -150,6 +170,7 @@ class SSB_DQN:
     def record_experience(self, game_data):
         # an experience is made up of a current state, a previous state, and the action taken from the previous state to
         # get to the current state. If we have a previous state/action (we dont on the first connection), add it.
+        new_experience = None
         clientID = game_data.get_clientID()
         if self.client_data.client_id_exists(clientID):
             current_state = game_data.get_current_state()
@@ -160,12 +181,15 @@ class SSB_DQN:
                 print(previous_state.get_frame(0).get("2score"))
             new_experience = Experience(current_state, previous_state, previous_action_taken)
             self.experiences.append(new_experience)
-            # TODO uncomment for debugging rewards
-            debug_reward = self.rewarder.calculate_reward(new_experience, True)
-            print("Reward for current iteration: "+str(debug_reward))
+
+            #debug_reward = self.rewarder.calculate_reward(new_experience, True)
+            #print("Reward for current iteration: "+str(debug_reward))
+        else:
+            print("Game ID "+str(clientID)+" is not a valid client ID")
 
         self.num_iterations +=1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
+        return new_experience
 
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
@@ -173,8 +197,13 @@ class SSB_DQN:
             self.experiences.popleft()
 
     def train(self):
-        #target_nn = self.target_model
-        training_nn = self.model
+        target_nn = self.target_model
+        main_model = self.model
+
+        # Every N iterations, update the training network with the model of the "real" network
+        if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
+            copy_ops = NNUtils.get_copy_var_ops(MAIN_NETWORK, TARGET_NETWORK)
+            self.sess.run(copy_ops)
 
         # Train only if we've collected enough observations
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
@@ -186,7 +215,7 @@ class SSB_DQN:
             previous_actions_taken = [x.get_action_taken() for x in batch]
             rewards = [self.rewarder.calculate_reward(x) for x in batch]
 
-            qvals = training_nn["output"].eval(feed_dict={training_nn["x"]: current_states})
+            qvals = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
             ybatch = []
 
             # Calculate the reward for each experience in the batch
@@ -202,16 +231,11 @@ class SSB_DQN:
                     ybatch.append(rewards[i] + (discount * np.amax(qvals[i])))
 
             # Learn that the previous states/actions led to the calculated rewards
-            self.sess.run(training_nn["train"], feed_dict={
-                training_nn["x"] : previous_states,
-                training_nn["action"] : previous_actions_taken,
-                training_nn["actual_q_value"] : ybatch
+            self.sess.run(main_model["train"], feed_dict={
+                main_model["x"] : previous_states,
+                main_model["action"] : previous_actions_taken,
+                main_model["actual_q_value"] : ybatch
             })
-
-            # Every N iterations, update the training network with the model of the "real" network
-            if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
-                copy_ops = NNUtils.get_copy_var_ops(TRAIN_NETWORK, MAIN_NETWORK)
-                self.sess.run(copy_ops)
         else:
             self.logger.log_verbose("Not yet training....not enough experiences")
 

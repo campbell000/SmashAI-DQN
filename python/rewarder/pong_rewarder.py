@@ -8,7 +8,6 @@ class PongRewarder(AbstractRewarder):
     def __init__(self):
         super(AbstractRewarder, self).__init__()
 
-    # the experience is termainl if one player has '10' in the current state (any frame).
     def experience_is_terminal(self, experience):
         reward = self.calculate_reward(experience)
         return reward != 0
@@ -43,3 +42,15 @@ class PongRewarder(AbstractRewarder):
             scores.append(int(framedata.get_score(player)))
         return max(scores)
 
+    def should_record_reward_in_log(self, experience):
+        player1_max_curr = self.get_max_score_for_player_in_state(1, experience.get_curr_state())
+        player2_max_curr = self.get_max_score_for_player_in_state(2, experience.get_curr_state())
+        if (player1_max_curr == 10 or player2_max_curr == 10):
+            return True
+        else:
+            return False
+
+    def get_reward_for_log(self, experience):
+        player1_max_curr = self.get_max_score_for_player_in_state(1, experience.get_curr_state())
+        player2_max_curr = self.get_max_score_for_player_in_state(2, experience.get_curr_state())
+        return player1_max_curr - player2_max_curr

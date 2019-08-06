@@ -7,7 +7,7 @@ import uuid
 class NeuralNetworkUtils:
     # This method returns operations to copy the weights/variables from the src network to the destination network.
     @staticmethod
-    def get_copy_var_ops(dest_name, src_name):
+    def get_copy_var_ops(src_name, dest_name):
         op_holder = []
 
         src_vars = tf.get_collection(

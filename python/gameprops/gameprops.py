@@ -18,9 +18,11 @@ class GameProps():
         self.experience_buffer_size = 100000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 10000
+        self.num_obs_before_training = 100000
+
+        # Slowly make agent less random
         self.num_steps_epislon_decay = 1000000
-        self.epsilon_end =  0.05
+        self.epsilon_end =  0.2
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
 
         # based on https://stats.stackexchange.com/questions/181/how-to-choose-the-number-of-hidden-layers-and-nodes-in-a-feedforward-neural-netw
@@ -106,4 +108,32 @@ class GameProps():
 
     def set_hidden_units_array(self, v):
         self.hidden_units_arr = v
+
+    def get_finetuned_epsilon_end(self):
+        return self.finetune_epsilon_end
+
+    def get_finetuned_num_steps_before_epsilon_end(self):
+        return self.finetune_num_steps_before_epsilon_end
+
+    def get_finetuned_step_size(self):
+        return self.finetune_step_size
+
+    def dump(self):
+        print("GAMEPROPS")
+        print("Learning rate: "+str(self.learning_rate))
+        print("network_input_length: "+str(self.network_input_length))
+        print("network_output_length: "+str(self.network_output_length))
+        print("experience_buffer_size: "+str(self.experience_buffer_size))
+        print("future_reward_discount: "+str(self.future_reward_discount))
+        print("mini_batch_size: "+str(self.mini_batch_size))
+        print("num_obs_before_training: "+str(self.num_obs_before_training))
+        print("num_steps_epislon_decay: "+str(self.num_steps_epislon_decay))
+        print("epsilon_end: "+str(self.epsilon_end))
+        print("epsilon_step_size: "+str(self.epsilon_step_size))
+        print("num_hidden_layers: "+str(self.num_hidden_layers))
+        print("hidden_units_arr: "+str(self.hidden_units_arr))
+        print("Learning Rate: "+str(self.learning_rate))
+        print("Fine-tuned epsilon end: "+str(self.finetune_epsilon_end))
+        print("Fine-tuned num epsilon steps: "+str(self.finetune_num_steps_before_epsilon_end))
+        print("Fine-tuned epsilon step size: "+str(self.finetune_step_size))
 
