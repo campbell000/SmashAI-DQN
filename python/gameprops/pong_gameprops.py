@@ -12,21 +12,21 @@ class PongGameProps(GameProps):
         self.pong_input_length = Constants.NUM_FRAMES_PER_STATE * 4
         super(PongGameProps, self).__init__(Games.PONG, self.pong_input_length, 3) # 3 actions: up, down, and stand still
 
-        self.learning_rate = 1e-4
+        self.learning_rate = 1e-5
 
         self.experience_buffer_size = 100000
-        self.future_reward_discount = 0.95
+        self.future_reward_discount = 0.99
         self.mini_batch_size = 32
-        self.num_obs_before_training = 1000
+        self.num_obs_before_training = 10000
 
         # Slowly make agent less random
-        self.num_steps_epislon_decay = 100000
+        self.num_steps_epislon_decay = 400000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
 
         # Pong should only need one smaller hidden layer
         self.num_hidden_layers = 2
-        self.set_hidden_units_array([64, 64])
+        self.set_hidden_units_array([128, 128])
 
         # Dont think we need to adjust epsilon as training progresses
         self.finetune_epsilon_end = None
