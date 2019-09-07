@@ -23,7 +23,7 @@ class DQNAgent:
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = NeuralNetwork("main", session, state_size,action_size, self.learning_rate)
-        self.model.build_model(2, [128, 128], include_dropout=True)
+        self.model.build_model(2, [128, 128], include_dropout=False)
 
     def get_map(self):
         return self.model.get_map()
@@ -78,6 +78,7 @@ class DQNAgent:
 
 
 if __name__ == "__main__":
+    print(tf.__version__)
     env = gym.make('CartPole-v1')
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n

@@ -1,12 +1,25 @@
 from rewarder.rewarder import *
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
-class SSBRewarder(AbstractRewarder):
+
+# Only rewards on:
+# Killing (BIG Reward)
+# Dying (BIG Negative reward)
+# Dealing Damage (Moderate reward)
+# Living (small reward)
+# Is grounded (moderate reward)
+#
+# Noticeable omissions:
+# Taking damage (bot was not engaging, doing too much jumping and running)
+#
+class DumbSSBRewarder(AbstractRewarder):
     def __init__(self):
-        self.damage_multiplier = 0.001
-        self.life_multiplier = 1
-        self.living_multiplier = 0.00001
-        self.is_grounded_multiplier = 0.00001
+        print("DOING DUMB REWARDING")
+        self.damage_multiplier = 0.2
+        self.killing_multiplier = 1
+        self.death_multiplier = -10
+        self.living_multiplier = 0.0001
+        self.is_grounded_multiplier = 0.0001
 
     def state_is_death(self, state):
         if state in DEATH_STATES:
@@ -46,21 +59,21 @@ class SSBRewarder(AbstractRewarder):
         damage_dealt = current.get_frame(last_frame_idx).get("2dmg") - prev.get_frame(last_frame_idx).get("2dmg")
 
         # Do NOT reward or punish the bot when their damage counter gets reset.
-        if damage_taken < 0:
-            damage_taken = 0
         if damage_dealt < 0:
             damage_dealt = 0
 
-        damage_reward = damage_dealt - damage_taken
+        damage_reward = damage_dealt # - damage_taken
 
         # Calculate kills / deaths. Since death states occur for a few frames, check if death ocurred right after not-death ocurred.
         is_bot_dead = self.player_died(experience, 1)
         is_opponent_dead = self.player_died(experience, 2)
-        death_reward = is_opponent_dead - is_bot_dead
+        kill_reward = (is_opponent_dead  * self.killing_multiplier)
+        death_reward = (is_bot_dead * self.death_multiplier)
 
         # Calculate final reward by adding the damage-related rewards to the death-related rewards
         reward = (damage_reward * self.damage_multiplier)
-        reward += (death_reward * self.life_multiplier)
+        reward += death_reward
+        reward += kill_reward
 
         # If the bot did not take damage and did not die, give it a little bit of a reward
         if damage_taken == 0 and is_bot_dead == 0:

@@ -27,12 +27,13 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = 2
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
 
-local clientID = generateRandomString(12)
+--local clientID = generateRandomString(12)
+local clientID = "cqclybxhftkf"
 
 -- This function returns the player
 function Game.getPlayer(player)
@@ -210,7 +211,7 @@ function getGameStateMap()
         data[tostring(player).."shld_rec"] = Game.getShieldRecoveryTime(player)
         data[tostring(player).."jumps"] = Game.getJumpsRemaining(player)
         data[tostring(player).."dir"] = Game.getFacingDirection(player)
-        data[tostring(player).."jumps"] = Game.getMovementFrame(player)
+        data[tostring(player).."jumps"] = Game.getJumpsRemaining(player)
         data[tostring(player).."is_air"] = Game.isInAir(player)
         data[tostring(player).."state_frame"] = Game.getMovementFrame(player)
 
@@ -238,6 +239,8 @@ function dumpPlayerInfo(player)
     gui.drawString(0,70, "Jump Counter: " .. Game.getJumpsRemaining(player), null, null, 9)
     gui.drawString(0,80, "Damage%: " .. Game.getDamage(player), null, null, 9)
     gui.drawString(0,90, "In In Air: " .. Game.isInAir(player), null, null, 9)
+    gui.drawString(0,100, "Jump Counter: " .. Game.getJumpsRemaining(player), null, null, 9)
+    gui.drawString(0,110, "State Frame: " .. Game.getMovementFrame(player), null, null, 9)
 end
 
 function perform_action(player, actionIndex)

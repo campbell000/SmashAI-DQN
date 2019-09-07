@@ -14,6 +14,7 @@ from gamedata_parser import *
 from rewarder.rewarder import *
 from rewarder.pong_rewarder import *
 from rewarder.ssb_rewarder import *
+from rewarder.dumb_ssb_rewarder import *
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -69,9 +70,9 @@ def run():
         if len(sys.argv) >= 2 and sys.argv[1] == "verbose":
             verbose = True
 
-        ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
-        gameprops = SSBGameProps()
-        rewarder = SSBRewarder()
+        ## PARAMS FOR SSB. COMMENT OUT FOR SOMETHING ELSE
+        gameprops = PongGameProps()
+        rewarder = PongRewarder()
 
         dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
 
@@ -82,4 +83,23 @@ def run():
         print('running server...')
         httpd.serve_forever()
 
+def test():
+    print('starting server...')
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth=True
+    sess = tf.Session(config=config)
+
+    with sess.as_default():
+        ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
+        gameprops = SSBGameProps()
+        rewarder = SSBRewarder()
+
+        dqn_model = SSB_DQN(sess, gameprops, rewarder)
+        i = 0
+        while True:
+            i = i + 1
+            dqn_model.update_random_prob()
+            print("iteration: "+str(i)+", prob: "+str(dqn_model.get_random_action_prob()))
+
 run()
+#test()

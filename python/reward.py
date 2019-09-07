@@ -3,7 +3,6 @@
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
 NOTHING_REWARD = 0.000000 # Incentivize it to NOT die
 
-
 class Rewarder:
 
     def __init__(self, num_frames_per_state, life_multiplier=1, damage_multiplier=0.001):
