@@ -189,12 +189,13 @@ class SSB_DQN:
 
         self.num_iterations +=1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
-        return new_experience
 
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.
         # TODO: potential problem if running multiple clients
         if self.num_iterations >= self.gameprops.get_experience_buffer_size():
             self.experiences.popleft()
+
+        return new_experience
 
     def train(self):
         target_nn = self.target_model
