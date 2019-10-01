@@ -32,8 +32,7 @@ local STATE_FRAME_SIZE = 2
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
 
---local clientID = generateRandomString(12)
-local clientID = "cqclybxhftkf"
+local clientID = generateRandomString(12)
 
 -- This function returns the player
 function Game.getPlayer(player)

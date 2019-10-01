@@ -19,6 +19,7 @@ import datetime
 MAIN_NETWORK = "main"
 TARGET_NETWORK = "target"
 UPDATE_TARGET_INTERVAL = 10000
+DOUBLE_DQN = True
 
 class ClientData:
     ACTION = 0
@@ -101,6 +102,9 @@ class SSB_DQN:
             new_experience = self.record_experience(game_data)
             self.train()
 
+        if self.num_iterations == self.gameprops.get_num_obs_before_training():
+            print("*** NOW STARTING TRAINING ***")
+
         # If we are done observing, pick the action to send back to the client based on the current state
         if self.num_iterations > self.gameprops.get_num_obs_before_training():
             # get action based on policy
@@ -108,13 +112,13 @@ class SSB_DQN:
             self.update_random_prob()
 
             # log the reward we're getting based on some criteria
-            if new_experience is not None and self.rewarder.should_record_reward_in_log(new_experience):
-                reward_differential = self.rewarder.get_reward_for_log(new_experience)
-                num_iters_training = self.num_iterations - self.gameprops.get_num_obs_before_training()
-                string = str(datetime.datetime.now().timestamp())+", "+str(num_iters_training)+", "+str(reward_differential)
-                print("Printing out "+string+" to reward file")
-                with open("reward_log.txt", 'a') as file:
-                    file.write(string+"\n")
+            #if new_experience is not None and self.rewarder.should_record_reward_in_log(new_experience):
+            #    reward_differential = self.rewarder.get_reward_for_log(new_experience)
+            #    num_iters_training = self.num_iterations - self.gameprops.get_num_obs_before_training()
+            #    string = str(datetime.datetime.now().timestamp())+", "+str(num_iters_training)+", "+str(reward_differential)
+            #    print("Printing out "+string+" to reward file")
+            #    with open("reward_log.txt", 'a') as file:
+            #        file.write(string+"\n")
 
         else:
             action = self.get_random_action()
@@ -125,7 +129,7 @@ class SSB_DQN:
             self.verbose_log_dump(game_data)
 
         # print that bitch anyway if we're at the 10,000 interval. Also do some savin
-        if self.num_iterations % 2000 == 0:
+        if self.num_iterations % 2000 == 0 and self.num_iterations > self.gameprops.get_num_obs_before_training():
             self.verbose_log_dump(game_data)
             save_path = self.saver.save(self.sess, "saved_sessions/saved_model.ckpt")
 
@@ -203,7 +207,7 @@ class SSB_DQN:
 
         # Every N iterations, update the training network with the model of the "real" network
         if self.num_iterations % UPDATE_TARGET_INTERVAL == 0:
-            copy_ops = NNUtils.get_copy_var_ops(MAIN_NETWORK, TARGET_NETWORK)
+            copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, TARGET_NETWORK)
             self.sess.run(copy_ops)
 
         # Train only if we've collected enough observations
@@ -215,8 +219,11 @@ class SSB_DQN:
             current_states = [self.gameprops.convert_state_to_network_input(x.get_curr_state()) for x in batch]
             previous_actions_taken = [x.get_action_taken() for x in batch]
             rewards = [self.rewarder.calculate_reward(x) for x in batch]
-
             qvals = target_nn["output"].eval(feed_dict={target_nn["x"]: current_states})
+            theoretical_next_actions = None
+            if DOUBLE_DQN:
+                theoretical_next_actions = [np.argmax(x) for x in main_model["output"].eval(feed_dict={main_model["x"]: current_states})]
+
             ybatch = []
 
             # Calculate the reward for each experience in the batch
@@ -229,7 +236,15 @@ class SSB_DQN:
                 # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
                 else:
                     discount = self.gameprops.get_future_reward_discount()
-                    ybatch.append(rewards[i] + (discount * np.amax(qvals[i])))
+                    discounted_reward = rewards[i] + (discount * np.amax(qvals[i]))
+
+                    # If using double DQN, don't take the max qval. Instead, take the best action from the main online model
+                    # and use that action's qval (produced by the target network)
+                    if DOUBLE_DQN:
+                        target_qval = qvals[i][theoretical_next_actions[i]]
+                        discounted_reward = rewards[i] + (discount * target_qval)
+
+                    ybatch.append(discounted_reward)
 
             # Learn that the previous states/actions led to the calculated rewards
             self.sess.run(main_model["train"], feed_dict={

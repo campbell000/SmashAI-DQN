@@ -92,3 +92,9 @@ class SSBRewarder(AbstractRewarder):
     # This method retrurns true if the current experience is a terminal state
     def experience_is_terminal(self, experience):
         return self.opponent_killed_bot(experience)
+
+    def should_record_reward_in_log(self, experience):
+        return self.experience_is_terminal(experience)
+
+    def get_reward_for_log(self, experience):
+        return self.calculate_reward(experience)

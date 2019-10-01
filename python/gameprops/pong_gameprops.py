@@ -14,10 +14,10 @@ class PongGameProps(GameProps):
 
         self.learning_rate = 1e-5
 
-        self.experience_buffer_size = 100000
-        self.future_reward_discount = 0.99
+        self.experience_buffer_size = 500000
+        self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 10000
+        self.num_obs_before_training = 20000
 
         # Slowly make agent less random
         self.num_steps_epislon_decay = 400000

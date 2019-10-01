@@ -71,8 +71,8 @@ def run():
             verbose = True
 
         ## PARAMS FOR SSB. COMMENT OUT FOR SOMETHING ELSE
-        gameprops = PongGameProps()
-        rewarder = PongRewarder()
+        gameprops = SSBGameProps()
+        rewarder = SSBRewarder()
 
         dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
 
