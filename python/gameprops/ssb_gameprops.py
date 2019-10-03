@@ -14,14 +14,14 @@ class SSBGameProps(GameProps):
 
         self.num_possible_states = NUM_POSSIBLE_STATES
         # taken from number of non-state params in client data, multiplied by 2 players
-        input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 13) * 2)
+        input_length = (Constants.NUM_FRAMES_PER_STATE * 13 * 2)
 
         # After that, call the superclass' init method as normal
         super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
 
         # Pong should only need one smaller hidden layer
         self.num_hidden_layers = 4
-        self.set_hidden_units_array([4000, 2000, 1000, 500])
+        self.set_hidden_units_array([500, 500, 250, 100])
         self.future_reward_discount = 0.99425 # Rewards 2 seconds into the future are worth 50%
 
         self.experience_buffer_size = 1000000
@@ -65,8 +65,6 @@ class SSBGameProps(GameProps):
                 else:
                     tf_data.append(1)
 
-                # Convert the categorical state variable into binary data
-                tf_data = tf_data + self.convert_state_to_vector(data.get(str(player_id)+"state"), self.num_possible_states)
         return tf_data
 
     def normalize(self, datum_val, scale, keyfordebugging):
