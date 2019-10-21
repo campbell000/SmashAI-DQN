@@ -1,12 +1,14 @@
 from rewarder.rewarder import *
 
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
+STAGE_SAFE_BOUNDARY = 2250
 class SSBRewarder(AbstractRewarder):
     def __init__(self):
         self.damage_multiplier = 0.001
         self.life_multiplier = 1
-        self.living_multiplier = 0.00001
-        self.is_grounded_multiplier = 0.00001
+        self.living_multiplier = 0.001
+        self.is_grounded_multiplier = 0.001
+        self.stay_on_stage_multiplier = 0.001
 
     def state_is_death(self, state):
         if state in DEATH_STATES:
@@ -66,9 +68,16 @@ class SSBRewarder(AbstractRewarder):
         if damage_taken == 0 and is_bot_dead == 0:
             reward += self.living_multiplier
 
+        # Being on the ground is generally safer
         is_in_air = current.get_frame(last_frame_idx).get("1is_air")
         if is_in_air == 0:
             reward += self.is_grounded_multiplier
+
+        # Staying within the stage bounds is generally safer
+        if abs(current.get_frame(last_frame_idx).get("1xp")) > STAGE_SAFE_BOUNDARY:
+            reward -= self.stay_on_stage_multiplier
+        else:
+            reward += self.stay_on_stage_multiplier
 
         if for_current_verbose:
             print("REWARDS FOR CURRENT experience: ")

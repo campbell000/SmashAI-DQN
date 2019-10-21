@@ -16,6 +16,7 @@ import uuid
 from utils import Logger
 from gameprops.gameprops import *
 import datetime
+import time
 MAIN_NETWORK = "main"
 TARGET_NETWORK = "target"
 UPDATE_TARGET_INTERVAL = 10000
@@ -103,6 +104,7 @@ class SSB_DQN:
             self.train()
 
         if self.num_iterations == self.gameprops.get_num_obs_before_training():
+            print("END: "+str(time.time()))
             print("*** NOW STARTING TRAINING ***")
 
         # If we are done observing, pick the action to send back to the client based on the current state
@@ -190,8 +192,9 @@ class SSB_DQN:
             #print("Reward for current iteration: "+str(debug_reward))
         else:
             print("Game ID "+str(clientID)+" is not a valid client ID")
+            print("START: "+str(time.time()))
 
-        self.num_iterations +=1
+        self.num_iterations += 1
         self.logger.log_verbose("Recording new Experience...has "+str(len(self.experiences))+" total")
 
         # if the number of iterations exceeds the buffer size, then we know that the buffer is full. pop the oldest entry.

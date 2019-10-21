@@ -32,6 +32,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
+        #data = decompress(data)
         game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
 
         # If the action is train, train the bot and also retrieve a prediction for the client
@@ -83,23 +84,35 @@ def run():
         print('running server...')
         httpd.serve_forever()
 
-def test():
-    print('starting server...')
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth=True
-    sess = tf.Session(config=config)
+def decompress(compressed):
+    """Decompress a list of output ks to a string."""
+    from io import StringIO
 
-    with sess.as_default():
-        ## PARAMS FOR PONG. COMMENT OUT FOR SOMETHING ELSE
-        gameprops = SSBGameProps()
-        rewarder = SSBRewarder()
+    # Build the dictionary.
+    dict_size = 256
+    dictionary = {i: chr(i) for i in range(dict_size)}
 
-        dqn_model = SSB_DQN(sess, gameprops, rewarder)
-        i = 0
-        while True:
-            i = i + 1
-            dqn_model.update_random_prob()
-            print("iteration: "+str(i)+", prob: "+str(dqn_model.get_random_action_prob()))
+    # use StringIO, otherwise this becomes O(N^2)
+    # due to string concatenation in a loop
+    result = StringIO()
+    print(compressed)
+    w = chr(compressed.pop(0))
+    result.write(w)
+    for k in compressed:
+        if k in dictionary:
+            entry = dictionary[k]
+        elif k == dict_size:
+            entry = w + w[0]
+        else:
+            raise ValueError('Bad compressed k: %s' % k)
+        result.write(entry)
+
+        # Add w+entry[0] to the dictionary.
+        dictionary[dict_size] = w + entry[0]
+        dict_size += 1
+
+        w = entry
+    return result.getvalue()
 
 run()
 #test()

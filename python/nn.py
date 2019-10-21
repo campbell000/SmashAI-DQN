@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from collections import deque
+from tensorflow.losses import huber_loss
 import random
 import ast
 
@@ -58,7 +59,7 @@ class NeuralNetwork:
             layers.append(["final output layer", output_layer])
 
             q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
-            loss = tf.reduce_mean(tf.square(rewards - q_action))
+            loss = huber_loss(rewards, q_action)
 
             # Set up training operation
             train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)

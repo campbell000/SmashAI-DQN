@@ -8,7 +8,7 @@ require "list"
 local TF_CLIENT = require("tensorflow-client")
 local tfServerSampleIteration = 0
 local currentStateBuffer = List.newList()
-local currentAction = 32 -- Start off doing nothing (INPUT_ORDER[32] == CENTER NOTHING)
+local currentAction = 1 -- Start off doing nothing (INPUT_ORDER[32] == CENTER NOTHING)
 Game = {}
 
 function RandomVariable(length)
@@ -27,7 +27,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 2
+local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
@@ -250,6 +250,7 @@ function perform_action(player, actionIndex)
     -- index has two subtables with lengths > 0, then we got a button press and a stick direction. But if the first subtable
     -- has 0 elements, then we ONLY got a stick press.
     local inputs = INPUT_ORDER[actionIndex]
+
     local firstElementLength = tablelength(inputs[1])
     if (firstElementLength == 1) then
         joypad.set(inputs[1], player);
