@@ -112,16 +112,6 @@ class SSB_DQN:
             # get action based on policy
             action = self.get_action(game_data)
             self.update_random_prob()
-
-            # log the reward we're getting based on some criteria
-            #if new_experience is not None and self.rewarder.should_record_reward_in_log(new_experience):
-            #    reward_differential = self.rewarder.get_reward_for_log(new_experience)
-            #    num_iters_training = self.num_iterations - self.gameprops.get_num_obs_before_training()
-            #    string = str(datetime.datetime.now().timestamp())+", "+str(num_iters_training)+", "+str(reward_differential)
-            #    print("Printing out "+string+" to reward file")
-            #    with open("reward_log.txt", 'a') as file:
-            #        file.write(string+"\n")
-
         else:
             action = self.get_random_action()
 
