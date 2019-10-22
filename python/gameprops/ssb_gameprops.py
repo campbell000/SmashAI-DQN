@@ -16,31 +16,8 @@ class SSBGameProps(GameProps):
         # taken from number of non-state params in client data, multiplied by 2 players
         input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 13) * 2)
 
-        self.learning_rate = 1e-4
-
         # After that, call the superclass' init method as normal
         super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
-
-        # Pong should only need one smaller hidden layer
-        self.num_hidden_layers = 4
-        self.set_hidden_units_array([4000, 4000, 2000, 500])
-        self.future_reward_discount = 0.99425 # Rewards 2 seconds into the future are worth 50%
-
-        self.experience_buffer_size = 200000
-        self.num_obs_before_training = 1000
-
-        # Slowly make agent less random
-        self.num_steps_epislon_decay = 2000000
-        self.epsilon_end =  0.1
-        self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-
-        # Once we start acting almost-optimally, slow down the rate at which the agent gets less random
-        self.finetune_epsilon_end = 0.01
-        self.finetune_num_steps_before_epsilon_end = 10000000
-        self.finetune_step_size = (self.epsilon_end - self.finetune_epsilon_end) / self.finetune_num_steps_before_epsilon_end
-
-    def get_num_possible_states(self):
-        return self.num_possible_states
 
     # This method converts all of the ssb data to a format that can be fed as inputs into the network
     def convert_state_to_network_input(self, state):
