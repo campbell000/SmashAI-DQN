@@ -23,3 +23,7 @@ class NeuralNetworkUtils:
     @staticmethod
     def get_one_hot(value, num_possible_classes):
         return np.eye(num_possible_classes)[value]
+
+    @staticmethod
+    def get_random_action(number_of_actions):
+        return random.randint(0,(number_of_actions - 1))
