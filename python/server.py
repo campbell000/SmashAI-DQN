@@ -3,7 +3,6 @@
 
 PORT = 8081
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from dqn import SSB_DQN
 import tensorflow as tf
 from gamedata_parser import GameDataParser
 from gameprops.gameprops import *
@@ -17,6 +16,7 @@ from rewarder.ssb_rewarder import *
 from rewarder.dumb_ssb_rewarder import *
 from learning_models.dqn import DQN
 from rl_agent import RLAgent
+from rewarder.rewarder import *
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -39,8 +39,8 @@ ASYNC_TRAINING = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = TESTING
-MODEL = DQN
+CURRENT_GAME = PONG
+MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -94,7 +94,8 @@ def run():
 
         # Run Server
         server_address = ('0.0.0.0', PORT)
-        testHTTPServer_RequestHandler.rl_agent = RLAgent(sess, props[0], props[1], get_learning_model(sess, props[0], props[1]))
+        model = get_learning_model(sess, props[0], props[1])
+        testHTTPServer_RequestHandler.rl_agent = RLAgent(sess, props[0], props[1], model)
         httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
         print('running server...')
         httpd.serve_forever()
@@ -112,6 +113,5 @@ def get_game_specific_params():
 def get_learning_model(sess, gameprops, rewarder):
     if MODEL == DQN_MODEL:
         return DQN(sess, gameprops, rewarder)
-
 
 run()

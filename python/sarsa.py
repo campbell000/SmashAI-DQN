@@ -21,7 +21,7 @@ MAIN_NETWORK = "main"
 TARGET_NETWORK = "target"
 UPDATE_TARGET_INTERVAL = 10000
 DOUBLE_DQN = True
-
+"""
 class SarsaLearner:
     def __init__(self, session, n_steps):
         self.verbose = verbose
@@ -50,5 +50,7 @@ class SarsaLearner:
             return get_action_based_on_policy(game_data)
 
     def get_action_based_on_policy(self, game_data):
+"""
+
 
 

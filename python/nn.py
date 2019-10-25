@@ -28,7 +28,7 @@ class NeuralNetwork:
         return self.map["output"].eval(feed_dict={self.map["x"]: state})
 
     # This method builds and returns the model for estimating Q values
-    def build_model(self):
+    def build(self):
         with tf.variable_scope(self.name):
             x = tf.placeholder(tf.float32, [None, self.input_length]) # rows of input vectors
             actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]

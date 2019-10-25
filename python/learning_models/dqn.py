@@ -1,5 +1,5 @@
 import random
-from learning_model import LearningModel
+from learning_models.learning_model import LearningModel
 from nn_utils import NeuralNetworkUtils as NNUtils
 from collections import deque
 import numpy as np
@@ -24,6 +24,7 @@ UPDATE_TARGET_INTERVAL = 10000
 DOUBLE_DQN = True
 
 class DQN(LearningModel):
+
     # Initialize defaults for all of the variables
     def __init__(self, session, game_props, rewarder):
         super(DQN, self).__init__(session, game_props, rewarder)
@@ -31,9 +32,11 @@ class DQN(LearningModel):
         self.experiences = deque()
         self.number_training_iterations = 0
         self.model = NeuralNetwork(MAIN_NETWORK, session, game_props.get_network_input_len(),
-                                   game_props.get_network_output_len(), game_props.get_learning_rate()).build()
+                                   game_props.get_network_output_len(), game_props.hidden_units_arr,
+                                   game_props.get_learning_rate()).build()
         self.target_model = NeuralNetwork(TRAIN_NETWORK, session, game_props.get_network_input_len(),
-                                      game_props.get_network_output_len(), game_props.get_learning_rate()).build()
+                                   game_props.get_network_output_len(), game_props.hidden_units_arr,
+                                   game_props.get_learning_rate()).build()
 
     # DQN only needs one experience (which holds the prev state, prev action, and current state_
     def get_client_experience_memory_size(self):
@@ -60,6 +63,9 @@ class DQN(LearningModel):
                 actions.append(experience.prev_action)
                 rewards.append(self.rewarder.calculate_reward(experience))
 
+            # Finally, update the probability of taking a random action according to epsilon
+            if self.game_props.anneal_epsilon and self.random_action_probability > self.epsilon_end:
+                self.random_action_probability -= self.epsilon_step_size
         self.number_training_iterations += 1
 
     def train_neural_networks(self, experience_batch, prev_states, curr_states, prev_actions, rewards):

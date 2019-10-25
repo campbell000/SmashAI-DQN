@@ -33,6 +33,7 @@ class RLAgent:
         self.sample_queue = queue.Queue(maxsize=1000)
         self.client_experience_queue = {}
         self.single_client_id = None
+        self.model = model
 
         # The length of the client's history to record is dictated by the model if not specified.
         self.client_experience_memory_len = model.get_client_experience_memory_size() if client_memory_size is None else client_memory_size
@@ -42,9 +43,9 @@ class RLAgent:
         self.saver = tf.train.Saver()
         gameprops.dump()
 
-    # Given a state, gets an action. Optionally, it also trains the Q-network if we are training (i.e. do_train=true)
+    # Given a state, gets an action.
     def get_prediction(self, game_data, is_training=True):
-        return self.model.get_action(game_data)
+        return self.model.get_action(game_data, is_training)
 
     # Stores the experience. It first stores the new data into a client-specific experience history. Then, if we're
     # doing async training, we add the current client history to the training sample queue (the trainer MAY not need
