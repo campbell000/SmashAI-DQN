@@ -21,6 +21,7 @@ class GameProps():
         self.num_obs_before_training = 100000
 
         # Slowly make agent less random
+        self.anneal_epsilon = True
         self.num_steps_epislon_decay = 1000000
         self.epsilon_end =  0.2
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay

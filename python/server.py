@@ -15,6 +15,8 @@ from rewarder.rewarder import *
 from rewarder.pong_rewarder import *
 from rewarder.ssb_rewarder import *
 from rewarder.dumb_ssb_rewarder import *
+from learning_models.dqn import DQN
+from rl_agent import RLAgent
 import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
@@ -22,25 +24,45 @@ TRAIN = 0
 EVAL = 1
 HELLO = 2
 
+# Variables for games
+SMASH = 0
+PONG = 1
+TESTING = 2
+
+# Models
+SARSA_MODEL = 0
+DQN_MODEL = 1
+
+# Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
+# on a separate thread
+ASYNC_TRAINING = False
+
+# Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
+# Change this to modify the game
+CURRENT_GAME = TESTING
+MODEL = DQN
+
 # This class handles requests from bizhawk
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
-
-    dqn_model = None
+    rl_agent = None
     started = False
 
     # This function handles requests from the client.
     def do_POST(self):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
-        #data = decompress(data)
         game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
 
-        # If the action is train, train the bot and also retrieve a prediction for the client
+        # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
         if game_data.get_client_action() == TRAIN:
-            action_index = self.dqn_model.get_prediction(game_data, do_train=True)
+            action = self.rl_agent.get_prediction(game_data, do_train=True)
+            self.rl_agent.store_experience(game_data.get_clientID(), game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
+            if not ASYNC_TRAINING:
+                self.rl_agent.train_model(async_training=ASYNC_TRAINING)
+
             response = str(action_index)
         elif game_data.get_client_action() == EVAL:
-            action_index = self.dqn_model.get_prediction(game_data, do_train=False)
+            action_index = self.rl_agent.get_prediction(game_data, do_train=False)
             response = str(action_index)
         else:
             print("Saying HELLO to the tensorflow client!")
@@ -67,52 +89,29 @@ def run():
     sess = tf.Session(config=config)
 
     with sess.as_default():
-        verbose = False
-        if len(sys.argv) >= 2 and sys.argv[1] == "verbose":
-            verbose = True
-
         ## PARAMS FOR SSB. COMMENT OUT FOR SOMETHING ELSE
-        gameprops = SSBGameProps()
-        rewarder = SSBRewarder()
-
-        dqn_model = SSB_DQN(sess, gameprops, rewarder, verbose=verbose)
+        props = get_game_specific_params()
 
         # Run Server
         server_address = ('0.0.0.0', PORT)
-        testHTTPServer_RequestHandler.dqn_model = dqn_model
+        testHTTPServer_RequestHandler.rl_agent = RLAgent(sess, props[0], props[1], get_learning_model(sess, props[0], props[1]))
         httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
         print('running server...')
         httpd.serve_forever()
 
-def decompress(compressed):
-    """Decompress a list of output ks to a string."""
-    from io import StringIO
+# Returns the current game's hyper parameters and reward function
+def get_game_specific_params():
+    if CURRENT_GAME == PONG:
+        return [PongGameProps(), PongRewarder()]
+    elif CURRENT_GAME == SMASH:
+        return [SSBGameProps(), SSBRewarder()]
+    elif CURRENT_GAME == TESTING:
+        print("AGHHHH")
 
-    # Build the dictionary.
-    dict_size = 256
-    dictionary = {i: chr(i) for i in range(dict_size)}
+# Returns the current learning model (i.e. DQN, SARSA, etc)
+def get_learning_model(sess, gameprops, rewarder):
+    if MODEL == DQN_MODEL:
+        return DQN(sess, gameprops, rewarder)
 
-    # use StringIO, otherwise this becomes O(N^2)
-    # due to string concatenation in a loop
-    result = StringIO()
-    print(compressed)
-    w = chr(compressed.pop(0))
-    result.write(w)
-    for k in compressed:
-        if k in dictionary:
-            entry = dictionary[k]
-        elif k == dict_size:
-            entry = w + w[0]
-        else:
-            raise ValueError('Bad compressed k: %s' % k)
-        result.write(entry)
-
-        # Add w+entry[0] to the dictionary.
-        dictionary[dict_size] = w + entry[0]
-        dict_size += 1
-
-        w = entry
-    return result.getvalue()
 
 run()
-#test()

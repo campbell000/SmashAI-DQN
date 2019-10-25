@@ -23,11 +23,7 @@ UPDATE_TARGET_INTERVAL = 10000
 DOUBLE_DQN = True
 
 class SarsaLearner:
-    """
-    Inspiration for this file comes from # https://github.com/DanielSlater/PyGamePlayer/blob/master/examples/deep_q_pong_player.py.
-    In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
-    """
-    def __init__(self, session, gameprops, rewarder, verbose=False):
+    def __init__(self, session, n_steps):
         self.verbose = verbose
         self.rewarder = rewarder
         self.gameprops = gameprops
