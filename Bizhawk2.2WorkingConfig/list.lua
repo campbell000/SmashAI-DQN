@@ -25,6 +25,12 @@ function List.pushright (list, value)
     list[last] = value
 end
 
+function List.empty(list)
+    while (List.length(list) > 0) do
+        List.popleft(list)
+    end
+end
+
 function List.popleft (list)
     local first = list.first
     if first > list.last then error("list is empty") end

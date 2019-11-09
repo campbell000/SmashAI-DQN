@@ -17,19 +17,6 @@ PONG_INPUT_ORDER = {
 	[2] = PONG_INPUTS.CENTER
 }
 
---PONG_INPUTS = {}
---PONG_INPUTS.DOWN_FAST = {["X Axis"] = 0, ["Y Axis"] = -127}
---PONG_INPUTS.DOWN_SLOW =  {["X Axis"] = 0, ["Y Axis"] = -30}
---PONG_INPUTS.UP_FAST =  {["X Axis"] = 0, ["Y Axis"] = 127}
---PONG_INPUTS.UP_SLOW =  {["X Axis"] = 0, ["Y Axis"] = 30}
---PONG_INPUTS.CENTER = {["X Axis"] = 0, ["Y Axis"] = 0}
---PONG_INPUT_ORDER = {
---	[0] = PONG_INPUTS.DOWN_FAST,
---	[1] = PONG_INPUTS.DOWN_SLOW,
---	[2] = PONG_INPUTS.UP_FAST,
---	[3] = PONG_INPUTS.UP_FAST,
---	[4] = PONG_INPUTS.CENTER
---}
 
 INPUTS = {}
 INPUTS.RIGHT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
@@ -87,66 +74,53 @@ INPUTS.RIGHT_DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -
 INPUTS.LEFT_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
 INPUTS.UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 
--- DO NOT CHANGE THIS ORDERING. We expect the Learning server to send a one-hot encoding, with a "1" corresponding to
--- the chosen action. We use the index of the "1" element to get the corresponding input in this array. So DO NOT CHANGE
--- IT unless you NEED TO. Note that it will make any saved networks on the server wrong.
-INPUT_ORDER = {
-	INPUTS.RIGHT_SPECIAL,
-	INPUTS.RIGHT_UP_SPECIAL,
-	INPUTS.LEFT_DOWN_SPECIAL,
-	INPUTS.LEFT_UP_SPECIAL,
-	INPUTS.CENTER_SPECIAL,
-	INPUTS.DOWN_SPECIAL,
-	INPUTS.RIGHT_DOWN_SPECIAL,
-	INPUTS.LEFT_SPECIAL,
-	INPUTS.UP_SPECIAL,
-	INPUTS.RIGHT_SHEILD,
-	INPUTS.RIGHT_UP_SHEILD,
-	INPUTS.LEFT_DOWN_SHEILD,
-	INPUTS.LEFT_UP_SHEILD,
-	INPUTS.CENTER_SHEILD,
-	INPUTS.DOWN_SHEILD,
-	INPUTS.RIGHT_DOWN_SHEILD,
-	INPUTS.LEFT_SHEILD,
-	INPUTS.UP_SHEILD,
-	INPUTS.RIGHT_JUMP,
-	INPUTS.RIGHT_UP_JUMP,
-	INPUTS.LEFT_DOWN_JUMP,
-	INPUTS.LEFT_UP_JUMP,
-	INPUTS.CENTER_JUMP,
-	INPUTS.DOWN_JUMP,
-	INPUTS.RIGHT_DOWN_JUMP,
-	INPUTS.LEFT_JUMP,
-	INPUTS.UP_JUMP,
-	INPUTS.RIGHT_NOTHING,
-	INPUTS.RIGHT_UP_NOTHING,
-	INPUTS.LEFT_DOWN_NOTHING,
-	INPUTS.LEFT_UP_NOTHING,
-	INPUTS.CENTER_NOTHING,
-	INPUTS.DOWN_NOTHING,
-	INPUTS.RIGHT_DOWN_NOTHING,
-	INPUTS.LEFT_NOTHING,
-	INPUTS.UP_NOTHING,
-	INPUTS.RIGHT_GRAB,
-	INPUTS.RIGHT_UP_GRAB,
-	INPUTS.LEFT_DOWN_GRAB,
-	INPUTS.LEFT_UP_GRAB,
-	INPUTS.CENTER_GRAB,
-	INPUTS.DOWN_GRAB,
-	INPUTS.RIGHT_DOWN_GRAB,
-	INPUTS.LEFT_GRAB,
-	INPUTS.UP_GRAB,
-	INPUTS.RIGHT_ATTACK,
-	INPUTS.RIGHT_UP_ATTACK,
-	INPUTS.LEFT_DOWN_ATTACK,
-	INPUTS.LEFT_UP_ATTACK,
-	INPUTS.CENTER_ATTACK,
-	INPUTS.DOWN_ATTACK,
-	INPUTS.RIGHT_DOWN_ATTACK,
-	INPUTS.LEFT_ATTACK,
-	INPUTS.UP_ATTACK,
-}
 
+
+TENNIS_INPUTS = {}
+TENNIS_INPUTS.UP = {{}, {["X Axis"] = 0, ["Y Axis"] = 127}}
+TENNIS_INPUTS.UP_RIGHT = {{}, {["X Axis"] = 127, ["Y Axis"] = 127}}
+TENNIS_INPUTS.RIGHT = {{}, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.DOWN_RIGHT = {{}, {["X Axis"] = 127, ["Y Axis"] = -127}}
+TENNIS_INPUTS.DOWN = {{}, {["X Axis"] = 0, ["Y Axis"] = -127}}
+TENNIS_INPUTS.DOWN_LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = -127}}
+TENNIS_INPUTS.LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.UP_LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = 127}}
+TENNIS_INPUTS.CENTER = {{}, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_A = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_A = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_A = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_B = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_B = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_B = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CANCEL = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+
+-- DO NOT CHANGE THIS ORDERING. We expect the Learning server to send a one-hot encoding, with a "1" corresponding to
+-- the chosen action. We use the index of the "1" element to get the corresponding TENNIS_INPUT in this array. So DO NOT CHANGE
+-- IT unless you NEED TO. Note that it will make any saved networks on the server wrong.
+TENNIS_INPUT_ORDER = {
+	TENNIS_INPUTS.UP,
+	TENNIS_INPUTS.UP_RIGHT,
+	TENNIS_INPUTS.RIGHT,
+	TENNIS_INPUTS.DOWN_RIGHT,
+	TENNIS_INPUTS.DOWN,
+	TENNIS_INPUTS.DOWN_LEFT,
+	TENNIS_INPUTS.LEFT,
+	TENNIS_INPUTS.UP_LEFT,
+	TENNIS_INPUTS.CENTER,
+	TENNIS_INPUTS.RIGHT_A,
+	TENNIS_INPUTS.CENTER_A,
+	TENNIS_INPUTS.LEFT_A,
+	TENNIS_INPUTS.RIGHT_B,
+	TENNIS_INPUTS.CENTER_B,
+	TENNIS_INPUTS.LEFT_B,
+	TENNIS_INPUTS.RIGHT_AB,
+	TENNIS_INPUTS.CENTER_AB,
+	TENNIS_INPUTS.LEFT_AB,
+	TENNIS_INPUTS.CANCEL
+}
 
 GameConstants = {
 	speedy_speeds = { .1, 1, 5, 10, 20, 35, 50, 75, 100 };
