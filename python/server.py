@@ -8,16 +8,17 @@ from gamedata_parser import GameDataParser
 from gameprops.gameprops import *
 from gameprops.pong_gameprops import *
 from gameprops.ssb_gameprops import *
+from gameprops.mario_tennis_gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 from rewarder.rewarder import *
 from rewarder.pong_rewarder import *
 from rewarder.ssb_rewarder import *
 from rewarder.dumb_ssb_rewarder import *
+from rewarder.mario_tennis_rewarder import *
 from learning_models.dqn import DQN
 from rl_agent import RLAgent
 from rewarder.rewarder import *
-import sys
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
 TRAIN = 0
@@ -27,7 +28,8 @@ HELLO = 2
 # Variables for games
 SMASH = 0
 PONG = 1
-TESTING = 2
+MARIOTENNIS = 2
+TESTING = 3
 
 # Models
 SARSA_MODEL = 0
@@ -89,7 +91,6 @@ def run():
     sess = tf.Session(config=config)
 
     with sess.as_default():
-        ## PARAMS FOR SSB. COMMENT OUT FOR SOMETHING ELSE
         props = get_game_specific_params()
 
         # Run Server
@@ -106,6 +107,8 @@ def get_game_specific_params():
         return [PongGameProps(), PongRewarder()]
     elif CURRENT_GAME == SMASH:
         return [SSBGameProps(), SSBRewarder()]
+    elif CURRENT_GAME == MARIOTENNIS:
+        return [MarioTennisGameprops(), MarioTennisRewarder()]
     elif CURRENT_GAME == TESTING:
         print("AGHHHH")
 

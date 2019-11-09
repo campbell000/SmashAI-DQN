@@ -22,7 +22,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
-local SEND_TO_SERVER = false
+local SEND_TO_SERVER = true
 
 local RESET_THIS_FRAME = false
 
@@ -35,7 +35,7 @@ local curr_1_score = 0
 local curr_2_score = 0
 random_save_state = 1
 
---savestate.loadslot(random_save_state)
+savestate.loadslot(random_save_state)
 
 function get_ball_x()
     return mainmemory.readfloat(0x0596C8, true)
@@ -258,7 +258,7 @@ while true do
 
     if (RESET_THIS_FRAME) then
         random_save_state = math.random(1, 4)
-        savestate.loadslot(random_save_state) --TODO FIX
+        savestate.loadslot(random_save_state)
         RESET_THIS_FRAME = false
         List.empty(currentStateBuffer)
     else
