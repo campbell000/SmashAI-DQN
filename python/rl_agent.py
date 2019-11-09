@@ -56,7 +56,7 @@ class RLAgent:
         add_to_training_queue = True
         if client_id not in self.client_experience_queue:
             self.client_experience_queue[client_id] = deque()
-            experience = Experience(None, None, current_state, action) # create a "dummy" state just to make things simple for the first time
+            experience = Experience(current_state, action, current_state, action) # create a "dummy" state just to make things simple for the first time
             add_to_training_queue = False
         else:
             # Create a NEW experience based off the prev state and prev action
@@ -89,7 +89,7 @@ class RLAgent:
         if async_training:
             self.model.train(self.sample_queue.get())
         else:
-            self.model.train(self.client_experience_queue[self.single_client_id])
+            self.model.train_model(self.client_experience_queue[self.single_client_id])
 
 class Experience:
     def __init__(self, prev_state, prev_action, curr_state, curr_action):

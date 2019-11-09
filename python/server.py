@@ -55,14 +55,14 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
         # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
         if game_data.get_client_action() == TRAIN:
-            action = self.rl_agent.get_prediction(game_data, do_train=True)
+            action = self.rl_agent.get_prediction(game_data, is_training=True)
             self.rl_agent.store_experience(game_data.get_clientID(), game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
             if not ASYNC_TRAINING:
                 self.rl_agent.train_model(async_training=ASYNC_TRAINING)
 
-            response = str(action_index)
+            response = str(action)
         elif game_data.get_client_action() == EVAL:
-            action_index = self.rl_agent.get_prediction(game_data, do_train=False)
+            action_index = self.rl_agent.get_prediction(game_data, is_training=False)
             response = str(action_index)
         else:
             print("Saying HELLO to the tensorflow client!")

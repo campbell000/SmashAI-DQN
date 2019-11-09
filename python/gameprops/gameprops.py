@@ -10,24 +10,21 @@ class GameProps():
 
     # Initialize defaults for all of the variables
     def __init__(self, network_input_len, network_output_len):
-        self.learning_rate = 1e-4
+        self.learning_rate = 1e-5
         self.network_input_length = network_input_len
         self.network_output_length = network_output_len
 
         self.experience_buffer_size = 100000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 100000
+        self.num_obs_before_training = 100
 
         # Slowly make agent less random
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 400000
-        self.epsilon_end =  0.01
+        self.num_steps_epislon_decay = 1000000
+        self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-
-        # based on https://stats.stackexchange.com/questions/181/how-to-choose-the-number-of-hidden-layers-and-nodes-in-a-feedforward-neural-netw
-        num_hidden = int(self.network_input_length * .6666)
-        self.hidden_units_arr = [num_hidden, int(num_hidden/2)]
+        self.hidden_units_arr = [128,128]
 
     def convert_state_to_network_input(self, state):
         pass

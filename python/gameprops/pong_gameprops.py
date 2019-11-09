@@ -10,7 +10,7 @@ class PongGameProps(GameProps):
 
     def __init__(self):
         self.pong_input_length = Constants.NUM_FRAMES_PER_STATE * 4
-        super(PongGameProps, self).__init__(Games.PONG, self.pong_input_length, 3) # 3 actions: up, down, and stand still
+        super(PongGameProps, self).__init__(self.pong_input_length, 3) # 3 actions: up, down, and stand still
 
     # format the data like this: [p1score, p1pos, p2score, p2pos, ballx, bally] for each frame in the state
     def convert_state_to_network_input(self, state):

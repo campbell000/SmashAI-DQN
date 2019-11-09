@@ -9,7 +9,7 @@ import ast
 class NeuralNetwork:
 
     def __init__(self, name, session, input_length, output_length, nodes_per_layer_arr, learning_rate, is_training=True,
-                 include_dropout=True, dropout_rate=0.05):
+                 huber_loss=False, include_dropout=False, dropout_rate=0.05):
         self.input_length = input_length
         self.output_length = output_length
         self.learning_rate = learning_rate
@@ -20,6 +20,7 @@ class NeuralNetwork:
         self.map = None
         self.nodes_per_layer_arr = nodes_per_layer_arr
         self.include_dropout = include_dropout
+        self.is_huber_loss = huber_loss
     def get_map(self):
         return self.map
 
@@ -58,8 +59,13 @@ class NeuralNetwork:
             output_layer = tf.layers.dense(prev_drop_layer, self.output_length)
             layers.append(["final output layer", output_layer])
 
-            q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
-            loss = huber_loss(rewards, q_action)
+            # Do huber loss if specified. Otherwise do MSE
+            if self.is_huber_loss:
+                q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
+                loss = huber_loss(rewards, q_action)
+            else:
+                q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
+                loss = tf.reduce_mean(tf.square(rewards - q_action))
 
             # Set up training operation
             train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
