@@ -19,58 +19,28 @@ PONG_INPUT_ORDER = {
 
 
 INPUTS = {}
-INPUTS.RIGHT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
 INPUTS.DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
-INPUTS.LEFT_SPECIAL = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
 INPUTS.UP_SPECIAL = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 INPUTS.RIGHT_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
-INPUTS.DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
 INPUTS.LEFT_SHEILD = {{["Z"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
-INPUTS.UP_SHEILD = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 INPUTS.RIGHT_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
 INPUTS.DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
 INPUTS.LEFT_JUMP = {{["C Right"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
 INPUTS.UP_JUMP = {{["C Right"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 INPUTS.RIGHT_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = 0}}
 INPUTS.DOWN_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_NOTHING = {{}, {["X Axis"] = 127, ["Y Axis"] = -127}}
 INPUTS.LEFT_NOTHING = {{}, {["X Axis"] = -127, ["Y Axis"] = 0}}
 INPUTS.UP_NOTHING = {{}, {["X Axis"] = 0, ["Y Axis"] = 127}}
 INPUTS.RIGHT_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
-INPUTS.DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_GRAB = {{["R"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
 INPUTS.LEFT_GRAB = {{["R"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
-INPUTS.UP_GRAB = {{["R"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 INPUTS.RIGHT_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-INPUTS.RIGHT_UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 127}}
-INPUTS.LEFT_DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = -127}}
-INPUTS.LEFT_UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 127}}
 INPUTS.CENTER_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
 INPUTS.DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = -127}}
-INPUTS.RIGHT_DOWN_ATTACK = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = -127}}
 INPUTS.LEFT_ATTACK = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
 INPUTS.UP_ATTACK = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 127}}
 
@@ -120,6 +90,33 @@ TENNIS_INPUT_ORDER = {
 	TENNIS_INPUTS.CENTER_AB,
 	TENNIS_INPUTS.LEFT_AB,
 	TENNIS_INPUTS.CANCEL
+}
+
+INPUT_ORDER = {
+	INPUTS.CENTER_SPECIAL,
+	INPUTS.DOWN_SPECIAL,
+	INPUTS.UP_SPECIAL,
+	INPUTS.RIGHT_SHEILD,
+	INPUTS.CENTER_SHEILD,
+	INPUTS.LEFT_SHEILD,
+	INPUTS.RIGHT_JUMP,
+	INPUTS.CENTER_JUMP,
+	INPUTS.DOWN_JUMP,
+	INPUTS.LEFT_JUMP,
+	INPUTS.UP_JUMP,
+	INPUTS.RIGHT_NOTHING,
+	INPUTS.CENTER_NOTHING,
+	INPUTS.DOWN_NOTHING,
+	INPUTS.LEFT_NOTHING,
+	INPUTS.UP_NOTHING,
+	INPUTS.RIGHT_GRAB,
+	INPUTS.CENTER_GRAB,
+	INPUTS.LEFT_GRAB,
+	INPUTS.RIGHT_ATTACK,
+	INPUTS.CENTER_ATTACK,
+	INPUTS.DOWN_ATTACK,
+	INPUTS.LEFT_ATTACK,
+	INPUTS.UP_ATTACK
 }
 
 GameConstants = {

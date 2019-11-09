@@ -45,6 +45,8 @@ end
 function CLIENT.send_request_to_tensorflow_server(request_body)
     -- send request as a POST
     res = {}
+    --request_body = lzw.deflate(request_body)
+    --print(request_body)
     local a, b, c, d = http.request {
         method = "POST",
         url = "http://127.0.0.1:8081",

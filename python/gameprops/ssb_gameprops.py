@@ -10,29 +10,14 @@ class SSBGameProps(GameProps):
     def __init__(self):
         # First, calculate the number of inputs based on the number of possible states
         NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
-        OUTPUT_LENGTH = 54 # based on number of possible inputs in gameConstants.lua
+        OUTPUT_LENGTH = 24 # based on number of possible inputs in gameConstants.lua
+
         self.num_possible_states = NUM_POSSIBLE_STATES
         # taken from number of non-state params in client data, multiplied by 2 players
         input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 13) * 2)
 
         # After that, call the superclass' init method as normal
         super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
-
-        # Pong should only need one smaller hidden layer
-        self.num_hidden_layers = 4
-        self.set_hidden_units_array([2000, 2000, 500, 250])
-        self.future_reward_discount = 1 - 1e-3
-
-        self.experience_buffer_size = 500000
-        self.num_obs_before_training = 50000
-
-        # Once we start acting almost-optimally, slow down the rate at which the agent gets less random
-        self.finetune_epsilon_end = 0.01
-        self.finetune_num_steps_before_epsilon_end = 10000000
-        self.finetune_step_size = (self.epsilon_end - self.finetune_epsilon_end) / self.finetune_num_steps_before_epsilon_end
-
-    def get_num_possible_states(self):
-        return self.num_possible_states
 
     # This method converts all of the ssb data to a format that can be fed as inputs into the network
     def convert_state_to_network_input(self, state):

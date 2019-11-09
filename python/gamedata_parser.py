@@ -12,10 +12,8 @@ class GameDataParser:
     - GameData:
         - Current State:
             - Frame 0:
-                - Player 1:
-                    - Data....
-                - Player 2:
-                    - Data...
+                key1: val1
+                key2: val2
             - Frame 1:
                 ...
         - Previous State:
@@ -44,7 +42,7 @@ class GameDataParser:
         # We're using maps to store the data, rather than arrays, because the data is not guaranteed to be in order.
         # For example, frame 1's data might be interspersed with frame 0's data.
         for key in fields:
-            state_type = "current" if key.startswith(CURRENT_STRING) else "previous"
+            state_type = "current"
             value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
             frame, dataKey = re.findall('\[(.*?)\]',key)
             frame = int(frame)

@@ -7,7 +7,7 @@ import uuid
 class NeuralNetworkUtils:
     # This method returns operations to copy the weights/variables from the src network to the destination network.
     @staticmethod
-    def get_copy_var_ops(src_name, dest_name):
+    def cope_source_into_target(src_name, dest_name):
         op_holder = []
 
         src_vars = tf.get_collection(
@@ -23,3 +23,7 @@ class NeuralNetworkUtils:
     @staticmethod
     def get_one_hot(value, num_possible_classes):
         return np.eye(num_possible_classes)[value]
+
+    @staticmethod
+    def get_random_action(number_of_actions):
+        return random.randint(0,(number_of_actions - 1))
