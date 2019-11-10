@@ -23,7 +23,6 @@ local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
-
 local RESET_THIS_FRAME = false
 
 local clientID = generateRandomString(12)
@@ -229,7 +228,6 @@ function perform_action(actionIndex)
     -- has 0 elements, then we ONLY got a stick press.
     local inputs = TENNIS_INPUT_ORDER[actionIndex]
     local firstElementLength = tablelength(inputs[1])
-    joypad.set({}, 1);
     if (firstElementLength >= 1) then
         joypad.set(inputs[1], 1);
     end
@@ -248,7 +246,7 @@ while true do
     if should_send_data_to_server(popped_frame) then
         if SEND_TO_SERVER then -- Set to false to fake sending to the server
             local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
-            currentAction = convertServerResponseToAction(resp)
+            currentAction = tonumber(resp)
         end
         tfServerSampleIteration = 0
     end

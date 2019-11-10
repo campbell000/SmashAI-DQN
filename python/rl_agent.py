@@ -63,6 +63,9 @@ class RLAgent:
             prev_exp = self.client_experience_queue[client_id][-1]
             experience = Experience(prev_exp.curr_state, prev_exp.curr_action, current_state, action)
 
+        # TODO: uncomment to see the current action's reward
+        #print("Current Reward: "+str(self.rewarder.calculate_reward(experience)))
+
         # Store the client's experience, but ensure that each client's history is limited
         client_memory = self.client_experience_queue[client_id]
         client_memory.append(experience)

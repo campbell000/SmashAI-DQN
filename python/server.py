@@ -41,7 +41,7 @@ ASYNC_TRAINING = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = PONG
+CURRENT_GAME = MARIOTENNIS
 MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk

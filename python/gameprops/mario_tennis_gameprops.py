@@ -6,7 +6,7 @@ import numpy as np
 class MarioTennisGameprops(GameProps):
 
     def __init__(self):
-        self.NUM_BALL_SPIN_STATES = 11 # number of possible ball spin states (topspin, slice, etc)
+        self.NUM_BALL_SPIN_STATES = 15 # number of possible ball spin states (topspin, slice, etc)
         self.network_input_length = (Constants.NUM_FRAMES_PER_STATE * (13 + self.NUM_BALL_SPIN_STATES))
         self.network_output_length = 19
         super(MarioTennisGameprops, self).__init__(self.network_input_length, self.network_output_length)
@@ -15,7 +15,7 @@ class MarioTennisGameprops(GameProps):
         self.experience_buffer_size = 500000
         self.future_reward_discount = 0.98
         self.mini_batch_size = 32
-        self.num_obs_before_training = 1000
+        self.num_obs_before_training = 100
         self.anneal_epsilon = True
         self.num_steps_epislon_decay = 1000000
         self.epsilon_end =  0.05
@@ -34,6 +34,10 @@ class MarioTennisGameprops(GameProps):
         self.ball_spin_enums[12] = 8
         self.ball_spin_enums[17] = 9
         self.ball_spin_enums[3] = 10
+        self.ball_spin_enums[13] = 11
+        self.ball_spin_enums[1] = 12
+        self.ball_spin_enums[14] = 13
+        self.ball_spin_enums[15] = 14
 
     def get_num_possible_states(self):
         return self.num_possible_states
@@ -42,7 +46,7 @@ class MarioTennisGameprops(GameProps):
         input = np.zeros((self.network_input_length))
         for i in range(state.get_num_frames()):
             data = state.get_frame(i)
-            base_index = i * Constants.NUM_FRAMES_PER_STATE
+            base_index = int(i * (self.network_input_length / Constants.NUM_FRAMES_PER_STATE))
             input[base_index+0] = data.get("1x")
             input[base_index+1] = data.get("1y")
             input[base_index+2] = data.get("1z")
@@ -58,13 +62,16 @@ class MarioTennisGameprops(GameProps):
             input[base_index+12] = data.get("bz")
 
             # Convert ball spin type to one hot encoding
-            input[base_index+0] = data.get("1x")
-            input = input + self.encode_spin_type(data.get("bspin"))
+            spin = np.argmax(self.encode_spin_type(data.get("bspin")))
+            if input[base_index+13+spin] != 0:
+                raise Exception("Something is wrong with the spin logic")
+
+            input[base_index+13+spin] = 1
         return input
 
     def encode_spin_type(self, spin_val):
         normalized_ball_spin_val = self.ball_spin_enums[int(spin_val)]
-        v = [0] * self.NUM_BALL_SPIN_STATES
+        v = np.zeros(self.NUM_BALL_SPIN_STATES)
         try:
             v[normalized_ball_spin_val] = 1
         except:
