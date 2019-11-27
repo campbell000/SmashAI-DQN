@@ -18,6 +18,8 @@ import time
 from collections import deque
 import queue
 import copy
+import datetime
+import threading
 
 class RLAgent:
     """
@@ -30,10 +32,16 @@ class RLAgent:
         self.gameprops = gameprops
         self.session = session
         self.model = model
-        self.sample_queue = queue.Queue(maxsize=1000)
+        self.sample_queue = queue.Queue(maxsize=100)
         self.client_experience_queue = {}
         self.single_client_id = None
         self.model = model
+
+        # Used for logging peformance
+        self.predictions_asked_for = 0
+        self.average_reward_interval = 10000
+        self.reward_sum = 0
+        self.dropped = 0
 
         # The length of the client's history to record is dictated by the model if not specified.
         self.client_experience_memory_len = model.get_client_experience_memory_size() if client_memory_size is None else client_memory_size
@@ -45,6 +53,7 @@ class RLAgent:
 
     # Given a state, gets an action.
     def get_prediction(self, game_data, is_training=True):
+        self.predictions_asked_for = self.predictions_asked_for + 1
         return self.model.get_action(game_data, is_training)
 
     # Stores the experience. It first stores the new data into a client-specific experience history. Then, if we're
@@ -79,18 +88,32 @@ class RLAgent:
             if not self.sample_queue.full():
                 self.sample_queue.put_nowait(mem_copy)
             else:
-                print("Dropping experience!")
+                self.dropped = self.dropped + 1
+                print("Dropping experience: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id
 
+        self.log_average_reward(experience)
+
+    def log_average_reward(self, experience):
+        reward = self.rewarder.calculate_reward(experience)
+        self.reward_sum = self.reward_sum + reward
+        if self.predictions_asked_for % self.average_reward_interval == 0:
+            datestr = datetime.datetime.now()
+            average_reward = self.reward_sum / self.average_reward_interval
+            self.reward_sum = 0
+            row = "\""+str(datestr)+"\", \""+str(self.predictions_asked_for)+"\", \""+str(average_reward)+"\""
+            with open("reward_logs.txt", "a+") as file:
+                file.write(row+"\n")
+
     # Trains the agent based on the given model
     def train_model(self, async_training=True):
         # If we're asynchronously training, grab the client's history from the sample queue (or wait until one exists)
-        # Otherwise, just grab what's in the client's history directly (since we know it won'y be changing out from under us,
-        # as we're doing synchronous training). TODO: This assumes that sync training = only one client!
+        # Otherwise, just grab what's in the client's history directly (since we know it won'y be changing out from
+        # under us, as we're doing synchronous training). TODO: This assumes that sync training = only one client!
         if async_training:
-            self.model.train(self.sample_queue.get())
+            self.model.train_model(self.sample_queue.get())
         else:
             self.model.train_model(self.client_experience_queue[self.single_client_id])
 

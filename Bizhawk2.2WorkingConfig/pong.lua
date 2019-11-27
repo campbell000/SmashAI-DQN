@@ -75,7 +75,7 @@ end
 
 function waitingForBall()
     local countdown = mainmemory.read_u32_be(countdown_timer)
-    if countdown < 260 then
+    if countdown < 275 then
         return true
     else
         return false

@@ -17,14 +17,14 @@ class GameProps():
         self.experience_buffer_size = 100000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 100
+        self.num_obs_before_training = 1000
 
         # Slowly make agent less random
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 1000000
+        self.num_steps_epislon_decay = 1200000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-        self.hidden_units_arr = [128,128]
+        self.hidden_units_arr = [256, 256, 256]
 
     def convert_state_to_network_input(self, state):
         pass
