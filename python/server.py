@@ -48,7 +48,7 @@ DQN_MODEL = 1
 
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
-ASYNC_TRAINING = False
+ASYNC_TRAINING = True
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
@@ -115,15 +115,16 @@ def run():
         # queue
         if ASYNC_TRAINING:
             print("Starting async training thread!")
-            thread = threading.Thread(target=async_training)
+            thread = threading.Thread(target=async_training, args=(tf.get_default_graph(),))
             thread.daemon = True
             thread.start()
 
         httpd.serve_forever()
 
-def async_training():
-    while True:
-        testHTTPServer_RequestHandler.rl_agent.train_model()
+def async_training(g):
+    with g.as_default():
+        while True:
+            testHTTPServer_RequestHandler.rl_agent.train_model()
 
 # Returns the current game's hyper parameters and reward function
 def get_game_specific_params():

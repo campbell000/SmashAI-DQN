@@ -54,7 +54,6 @@ class DQN(LearningModel):
             if len(self.experiences) > self.game_props.experience_buffer_size:
                 self.experiences.popleft()
 
-            # 0 = down, 1 = up, 2 = center
             # Now, do the DQN algorithm. This consists of getting a random batch from the experience replay buffer,
             # and using each item's prev state, action, current action, and reward to train the q-value estimator
             experience_batch = self.get_sample_batch()
@@ -111,13 +110,12 @@ class DQN(LearningModel):
                 ybatch.append(discounted_reward)
 
         # Learn that the previous states/actions led to the calculated rewards
-        self.session.run(main_nn["train"], feed_dict={
+        feed_dict = {
             main_nn["x"] : prev_states,
             main_nn["action"] : prev_actions,
             main_nn["actual_q_value"] : ybatch
-        })
-
-
+        }
+        self.session.run(main_nn["train"], feed_dict=feed_dict)
 
     def convert_to_network_input(self, state):
         return self.game_props.convert_state_to_network_input(state)

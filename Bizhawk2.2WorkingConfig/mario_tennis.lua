@@ -22,7 +22,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 2
 local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
-local SEND_TO_SERVER = true
+local SEND_TO_SERVER = false
 local RESET_THIS_FRAME = false
 
 local clientID = generateRandomString(12)
@@ -251,8 +251,10 @@ while true do
         tfServerSampleIteration = 0
     end
 
-    -- Do the current action we have.
-    perform_action(currentAction)
+    if SEND_TO_SERVER then
+        -- Do the current action we have.
+        perform_action(currentAction)
+    end
 
     if (RESET_THIS_FRAME) then
         random_save_state = math.random(1, 4)
@@ -266,7 +268,7 @@ while true do
         prev_2_score = curr_2_score
         curr_1_score = p1_score()
         curr_2_score = p2_score()
-        if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) then
+        if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) and SEND_TO_SERVER then
             RESET_THIS_FRAME = true
         end
     end

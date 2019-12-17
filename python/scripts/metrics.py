@@ -2,12 +2,14 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+from datetime import datetime
 
 import csv
 
 FILES = [
-    "pong_sync_reward_logs.txt",
-    "reward_logs.txt"
+    "20191212-sync_reward_logs.txt",
+    "20191216-async_reward_logs.txt"
 ]
 
 data = []
@@ -34,10 +36,35 @@ for a in range(len(data)):
     for i in range(len(d)):
         ydatacontainer[a].append(float(d[i][2]))
 
+datecontainer = []
+for a in range(len(data)):
+    d = data[a]
+    datecontainer.append([])
+    roottime = datetime.strptime(d[0][0], "%Y-%m-%d %H:%M:%S.%f")
+    for i in range(len(d)):
+        t = datetime.strptime(d[i][0], "%Y-%m-%d %H:%M:%S.%f")
+        diff = (t - roottime).total_seconds()
+        datecontainer[a].append(diff)
+
+
 for i in range(len(xdatacontainer)):
     xdata = xdatacontainer[i]
     ydata = ydatacontainer[i]
     plt.plot(xdata, ydata, label=FILES[i])
 
 plt.legend()
-plt.savefig("test")
+plt.savefig("20191216-iterations-vs-reward")
+plt.clf()
+plt.cla()
+plt.close()
+
+for i in range(len(xdatacontainer)):
+        xdata = datecontainer[i][:200]
+        ydata = ydatacontainer[i][:200]
+        plt.plot(xdata, ydata, label=FILES[i])
+
+plt.legend()
+plt.savefig("20191216-time-vs-reward")
+
+
+
