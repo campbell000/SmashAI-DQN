@@ -9,7 +9,7 @@ import csv
 
 FILES = [
     "20191212-sync_reward_logs.txt",
-    "20191216-async_reward_logs.txt"
+    "new_sync_reward_logs.txt"
 ]
 
 data = []

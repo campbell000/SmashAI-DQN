@@ -19,15 +19,17 @@ function RandomVariable(length)
     return res
 end
 
+
+-- TODO: USED TO BE 2/4
 -- CONSTANTS
 -- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
 -- number is > 1, this means that the bot will HOLD down the current action N number of frames
-local TF_SERVER_SAMPLE_SKIP_RATE = 2
+local TF_SERVER_SAMPLE_SKIP_RATE = 4
 
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = 8
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true

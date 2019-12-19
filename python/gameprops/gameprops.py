@@ -8,23 +8,41 @@ class Games(Enum):
 
 class GameProps():
 
+    """
+            self.learning_rate = 1e-5
+            self.network_input_length = network_input_len
+            self.network_output_length = network_output_len
+
+            self.experience_buffer_size = 100000
+            self.future_reward_discount = 0.95
+            self.mini_batch_size = 32
+            self.num_obs_before_training = 1000
+
+            # Slowly make agent less random
+            self.anneal_epsilon = True
+            self.num_steps_epislon_decay = 1200000
+            self.epsilon_end =  0.05
+            self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
+            self.hidden_units_arr = [256, 256, 256]
+    """
+
     # Initialize defaults for all of the variables
     def __init__(self, network_input_len, network_output_len):
         self.learning_rate = 1e-5
         self.network_input_length = network_input_len
         self.network_output_length = network_output_len
 
-        self.experience_buffer_size = 100000
+        self.experience_buffer_size = 200000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 32
-        self.num_obs_before_training = 1000
+        self.num_obs_before_training = 50000
 
         # Slowly make agent less random
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 1200000
+        self.num_steps_epislon_decay = 2000000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-        self.hidden_units_arr = [256, 256, 256]
+        self.hidden_units_arr = [512, 512, 512, 512]
 
     def convert_state_to_network_input(self, state):
         pass
