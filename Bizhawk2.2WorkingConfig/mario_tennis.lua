@@ -19,7 +19,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 4
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 8
+local STATE_FRAME_SIZE = 4
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
@@ -101,6 +101,10 @@ function get_player_serving_for_scoring()
     return mainmemory.read_u32_be(0x246FA4)
 end
 
+function play_has_stopped()
+    return mainmemory.read_u32_be(0x138004)
+end
+
 function p1_score()
     local player_serving = get_player_serving_for_scoring()
     if (player_serving == 0) then
@@ -121,10 +125,6 @@ end
 
 function get_ball_spin_val()
     return mainmemory.read_u32_be(0x15B1A0)
-end
-
-function someone_scored()
-    return mainmemory.read_u32_be(0x138004)
 end
 
 function get_ball_spin_type()
@@ -190,6 +190,7 @@ function get_game_state_map()
     data["by"] = get_ball_y()
     data["bz"] = get_ball_z()
     data["bspin"] = get_ball_spin_val()
+    data["play"] = play_has_stopped()
     local jrint = 0
     if JUST_RESTARTED == true then
         jrint = 1
@@ -227,6 +228,8 @@ function do_debug()
     gui.drawString(0,120, "Save State: "..string.format(random_save_state), null, null, 9)
     gui.drawString(0,130, "INPUTS: "..string.format(get_input_string()), null, null, 9)
     gui.drawString(0,140, "RESET_COUNTER: "..string.format(RESET_COUNTER), null, null, 9)
+    gui.drawString(0,150, "PLAY HAS STOPPED: "..string.format(play_has_stopped()), null, null, 9)
+
 
     if not should_send_data_to_server() then
         gui.drawString(0,140, "SKIPPING: ", null, null, 9)
@@ -250,6 +253,7 @@ end
 
 -- Do the next frame (and pray things don't break)
 while true do
+    joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
     do_debug()
 
     -- collect data
@@ -294,7 +298,7 @@ while true do
         curr_1_score = p1_score()
         curr_2_score = p2_score()
         if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) then
-            RESET_COUNTER = TF_SERVER_SAMPLE_SKIP_RATE * 3
+            RESET_COUNTER = TF_SERVER_SAMPLE_SKIP_RATE *  ((STATE_FRAME_SIZE / TF_SERVER_SAMPLE_SKIP_RATE) + 1)
         end
     end
     tfServerSampleIteration = tfServerSampleIteration + 1

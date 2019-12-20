@@ -7,7 +7,7 @@ class MarioTennisGameprops(GameProps):
 
     def __init__(self):
         self.NUM_BALL_SPIN_STATES = 15 # number of possible ball spin states (topspin, slice, etc)
-        self.network_input_length = (Constants.NUM_FRAMES_PER_STATE * (13 + self.NUM_BALL_SPIN_STATES))
+        self.network_input_length = (Constants.NUM_FRAMES_PER_STATE * (14 + self.NUM_BALL_SPIN_STATES))
         self.network_output_length = 19
         super(MarioTennisGameprops, self).__init__(self.network_input_length, self.network_output_length)
 
@@ -15,12 +15,12 @@ class MarioTennisGameprops(GameProps):
         self.experience_buffer_size = 1000000
         self.future_reward_discount = 0.99
         self.mini_batch_size = 32
-        self.num_obs_before_training = 50000
+        self.num_obs_before_training = 100000
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 4000000
+        self.num_steps_epislon_decay = 8000000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-        self.hidden_units_arr = [5012, 2048, 2048, 19]
+        self.hidden_units_arr = [5012, 2048, 2048, 1024]
 
         self.ball_spin_enums = {}
         self.ball_spin_enums[0] = 0
@@ -51,23 +51,24 @@ class MarioTennisGameprops(GameProps):
             input[base_index+0] = data.get("1x") / 120
             input[base_index+1] = data.get("1y") / 26
             input[base_index+2] = data.get("1z") / 266
-            input[base_index+3] = -1 if data.get("1srv") == 0 else data.get("1srv")
+            input[base_index+3] = -1 if data.get("1srv") == 0 else 1
             input[base_index+4] = data.get("1chrg") / 100
             input[base_index+5] = data.get("2x") / 120
             input[base_index+6] = data.get("2y") / 26
             input[base_index+7] = data.get("2z") / 266
-            input[base_index+8] = -1 if data.get("2srv") == 0 else data.get("2srv")
+            input[base_index+8] = -1 if data.get("2srv") == 0 else 1
             input[base_index+9] = data.get("2chrg") / 100
             input[base_index+10] = data.get("bx") / 120
             input[base_index+11] = data.get("by") / 100
             input[base_index+12] = data.get("bz") / 280
+            input[base_index+13] = 1 if data.get("play") == 0 else -1
 
             # Convert ball spin type to one hot encoding
             spin = np.argmax(self.encode_spin_type(data.get("bspin")))
-            if input[base_index+13+spin] != 0:
+            if input[base_index+14+spin] != 0:
                 raise Exception("Something is wrong with the spin logic")
 
-            input[base_index+13+spin] = 1
+            input[base_index+14+spin] = 1
         return input
 
     def encode_spin_type(self, spin_val):

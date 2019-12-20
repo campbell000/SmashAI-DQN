@@ -7,11 +7,11 @@ class MarioTennisRewarder(AbstractRewarder):
 
     def __init__(self):
         super(AbstractRewarder, self).__init__()
-        self.serve_reward = 0.1
+        self.serve_reward = 0.001
 
     def experience_is_terminal(self, experience):
         reward = self.calculate_reward(experience)
-        return reward != 0
+        return reward == -1 or reward == 1
 
     # Take the difference between the max scores for prev/current state. Each state could have multiple frames; we're
     # only concerned with the difference between the maxes of each state's frames
