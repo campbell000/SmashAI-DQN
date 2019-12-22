@@ -8,8 +8,8 @@ from datetime import datetime
 import csv
 
 FILES = [
-    "20191212-sync_reward_logs.txt",
-    "new_sync_reward_logs.txt"
+    "20191219-new_async_reward_logs.txt",
+    "20191219-new_sync_reward_logs.txt"
 ]
 
 data = []
@@ -53,7 +53,7 @@ for i in range(len(xdatacontainer)):
     plt.plot(xdata, ydata, label=FILES[i])
 
 plt.legend()
-plt.savefig("20191216-iterations-vs-reward")
+plt.savefig("iterations-vs-reward")
 plt.clf()
 plt.cla()
 plt.close()
@@ -64,7 +64,7 @@ for i in range(len(xdatacontainer)):
         plt.plot(xdata, ydata, label=FILES[i])
 
 plt.legend()
-plt.savefig("20191216-time-vs-reward")
+plt.savefig("time-vs-reward")
 
 
 
