@@ -9,6 +9,7 @@ local CLIENT = {}
 local TRAIN = 0
 local EVAL = 1
 local HELLO = 2
+local SCREENSHOT = 3
 
 
 function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, clientID, action)
@@ -66,6 +67,34 @@ end
 function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
     local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, TRAIN)
     return CLIENT.send_request_to_tensorflow_server(request_body)
+end
+
+function CLIENT.send_screenshot_data_for_training(clientID, data)
+    local buffer = {}
+
+    for dataKey, dataValue in pairs(data) do
+        buffer[#buffer+1] = tostring(dataKey).."="..dataValue.."&"
+    end
+
+    -- Add the action
+    buffer[#buffer+1] = "action="..TRAIN
+
+    -- Add the client ID. Maybe
+    buffer[#buffer+1] = "&clientID="..clientID
+
+    return CLIENT.send_request_to_tensorflow_server(table.concat(buffer))
+end
+
+function CLIENT.notify_server_of_clipboard_screenshot(clientID)
+    local buffer = {}
+
+    -- Add the action
+    buffer[1] = "action="..SCREENSHOT
+
+    -- Add the client ID. Maybe
+    buffer[2] = "&clientID="..clientID
+
+    return CLIENT.send_request_to_tensorflow_server(table.concat(buffer))
 end
 
 -- This function sends data to the server and does NOT traing the model. It simply returns a prediction.

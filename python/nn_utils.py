@@ -27,3 +27,11 @@ class NeuralNetworkUtils:
     @staticmethod
     def get_random_action(number_of_actions):
         return random.randint(0,(number_of_actions - 1))
+
+    @staticmethod
+    def flatten_image(arr):
+        for aidx, a in enumerate(arr):
+            for bidx, b in enumerate(a):
+                a[bidx] = b[0]
+
+

@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 from urllib.parse import parse_qs
 import re
 import ast
+import copy
 
 CURRENT_STRING = "c"
 PREVIOUS_STRING = "p"
@@ -41,24 +42,46 @@ class GameDataParser:
 
         # We're using maps to store the data, rather than arrays, because the data is not guaranteed to be in order.
         # For example, frame 1's data might be interspersed with frame 0's data.
-        for key in fields:
-            state_type = "current"
-            value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
-            frame, dataKey = re.findall('\[(.*?)\]',key)
-            frame = int(frame)
+        try:
+            for key in fields:
+                state_type = "current"
+                value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
 
-            # Create GameDataState for the state if it doesn't exist.
-            if state_type not in map:
-                map[state_type] = GameDataState()
+                frame, dataKey = re.findall('\[(.*?)\]',key)
+                frame = int(frame)
 
-            game_state = map[state_type]
-            if game_state.get_frame(frame) == False:
-                game_state.add_frame(frame)
+                # Create GameDataState for the state if it doesn't exist.
+                if state_type not in map:
+                    map[state_type] = GameDataState()
 
-            game_frame = game_state.get_frame(frame)
-            game_frame.add(dataKey, value)
+                game_state = map[state_type]
+                if game_state.get_frame(frame) == False:
+                    game_state.add_frame(frame)
+
+                game_frame = game_state.get_frame(frame)
+                game_frame.add(dataKey, value)
+        except: #TODO: Exception for optional screenshot stuff, do this better
+            gs = GameDataState()
+            gs.add_frame(0)
+            frame = gs.get_frame(0)
+
+            for key in fields:
+                value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
+                frame.add(key, value)
+
+            map["current"] = gs
 
         return GameData(map, action, clientID, req)
+
+    def add_screenshots_to_gamedata(gamedata, screenshots):
+        # when using screenshots, we only create one frame. Rearrange the game data object so that there's one frame
+        # per screenshot
+        state = gamedata.get_current_state()
+        single_frame = state.get_frame(0)
+        for idx, screenshot in enumerate(screenshots):
+            new_frame = copy.deepcopy(single_frame)
+            new_frame.add("screenshot", screenshot)
+            state.replace_frame(idx, new_frame)
 
 class GameData:
     def __init__(self, map, action, clientID, rawData):
@@ -89,6 +112,10 @@ class GameDataState:
 
     def add_frame(self, frameIndex):
         self.frames[frameIndex] = GameDataFrame()
+        return self.frames[frameIndex]
+
+    def replace_frame(self, frameIndex, frame):
+        self.frames[frameIndex] = frame
 
     def get_frame(self, frameIndex):
         if frameIndex in self.frames:
@@ -135,6 +162,3 @@ class PongGameData:
 
     def get_ball_y_pos(self):
         return self.framedata.get("bally")
-
-
-
