@@ -6,7 +6,6 @@ import numpy as np
 import tensorflow as tf
 from collections import deque
 import random
-from reward import Rewarder
 from gamedata_parser import *
 from evaluator import Evaluator
 from nn import NeuralNetwork
@@ -17,6 +16,8 @@ import os
 import uuid
 from utils import Logger
 from gameprops.gameprops import *
+from cnn import ConvolutionalNeuralNetwork
+from PIL import Image
 
 MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
@@ -32,10 +33,18 @@ class DQN(LearningModel):
         self.random_action_probability = 1
         self.experiences = deque()
         self.number_training_iterations = 0
-        self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
-                                   game_props.hidden_units_arr, game_props.learning_rate).build()
-        self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
-                                   game_props.hidden_units_arr,game_props.learning_rate).build()
+        if not game_props.is_conv():
+            self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                       game_props.hidden_units_arr, game_props.learning_rate).build()
+            self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                              game_props.hidden_units_arr,game_props.learning_rate).build()
+        else:
+            self.model = ConvolutionalNeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                       game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
+                                                    game_props.img_scaling_factor).build()
+            self.target_model = ConvolutionalNeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                          game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
+                                                           game_props.img_scaling_factor).build()
         self.session = session
         self.prioritized_replay = True
 
@@ -51,6 +60,7 @@ class DQN(LearningModel):
 
         # if we don't have enough observations as dictated by the hyperparameters, then don't do any training until we do
         if self.number_training_iterations > self.game_props.num_obs_before_training:
+
             # If we have too many experiences in the replay list, pop the oldest one
             if len(self.experiences) > self.game_props.experience_buffer_size:
                 self.experiences.popleft()
@@ -66,6 +76,12 @@ class DQN(LearningModel):
                 rewards.append(self.rewarder.calculate_reward(experience))
 
             with self.session.as_default():
+                #arr = self.convert_to_network_input(experience_batch[0].curr_state)
+                #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
+                #a = grayscaled[0]
+                #w, h, c = a.shape
+                #b = a.reshape(w, h)
+                #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
@@ -116,7 +132,14 @@ class DQN(LearningModel):
             main_nn["action"] : prev_actions,
             main_nn["actual_q_value"] : ybatch
         }
-        self.session.run(main_nn["train"], feed_dict=feed_dict)
+        try:
+            self.session.run(main_nn["train"], feed_dict=feed_dict)
+        except:
+            print("SHIT BROKE")
+            #a = self.convert_to_network_input(experience_batch[0].prev_state)
+            #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
+            #Image.fromarray(a.astype('uint8')).save(str(self.number_training_iterations)+".png")
+
 
     def convert_to_network_input(self, state):
         return self.game_props.convert_state_to_network_input(state)

@@ -19,10 +19,12 @@ from gameprops.gameprops import *
 from gameprops.pong_gameprops import *
 from gameprops.ssb_gameprops import *
 from gameprops.mario_tennis_gameprops import *
+from gameprops.pong_screenshot_gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 from rewarder.rewarder import *
 from rewarder.pong_rewarder import *
+from rewarder.pong_screenshot_rewarder import *
 from rewarder.ssb_rewarder import *
 from rewarder.dumb_ssb_rewarder import *
 from rewarder.mario_tennis_rewarder import *
@@ -35,12 +37,14 @@ import threading
 TRAIN = 0
 EVAL = 1
 HELLO = 2
+CLIPBOARD_SCREENSHOT = 3
 
 # Variables for games
 SMASH = 0
 PONG = 1
 MARIOTENNIS = 2
 TESTING = 3
+PONG_SCREENSHOT = 4
 
 # Models
 SARSA_MODEL = 0
@@ -49,6 +53,8 @@ DQN_MODEL = 1
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
 ASYNC_TRAINING = True
+
+USING_CLIPBOARD_SCREENSHOTS = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
@@ -65,11 +71,22 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         data = self.rfile.read(content_length).decode() # <--- Gets the data itself
         game_data = GameDataParser.parse_client_data(data) # Parse the data into a map
+        client_id = game_data.get_clientID()
+
+        if game_data.get_client_action() == CLIPBOARD_SCREENSHOT:
+            self.rl_agent.store_screenshot_for_client_from_clipboard(game_data.get_clientID())
+            response = "OK"
 
         # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
-        if game_data.get_client_action() == TRAIN:
+        elif game_data.get_client_action() == TRAIN:
+            # If doing screenshots, we are sending ONLY the stuff we need to calculate reward. And we're ONLY
+            # sending values for ONE frame. We need to gather all the screenshots and add them to the game_data objects
+            if USING_CLIPBOARD_SCREENSHOTS:
+                self.rl_agent.store_screenshot_for_client_from_clipboard(client_id)
+                GameDataParser.add_screenshots_to_gamedata(game_data, self.rl_agent.get_screenshot_buffer_for_client(client_id, clear=True))
+
             action = self.rl_agent.get_prediction(game_data, is_training=True)
-            self.rl_agent.store_experience(game_data.get_clientID(), game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
+            self.rl_agent.store_experience(client_id, game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
             if not ASYNC_TRAINING:
                 self.rl_agent.train_model(async_training=ASYNC_TRAINING)
 
@@ -130,6 +147,8 @@ def async_training(g):
 def get_game_specific_params():
     if CURRENT_GAME == PONG:
         return [PongGameProps(), PongRewarder()]
+    if CURRENT_GAME == PONG_SCREENSHOT:
+        return [PongScreenshotGameProps(), PongScreenshotRewarder()]
     elif CURRENT_GAME == SMASH:
         return [SSBGameProps(), SSBRewarder()]
     elif CURRENT_GAME == MARIOTENNIS:

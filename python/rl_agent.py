@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 from collections import deque
 import random
-from reward import Rewarder
 from gamedata_parser import *
 from evaluator import Evaluator
 from nn import NeuralNetwork
@@ -20,6 +19,7 @@ import queue
 import copy
 import datetime
 import threading
+from PIL import ImageGrab
 
 class RLAgent:
     """
@@ -36,6 +36,7 @@ class RLAgent:
         self.client_experience_queue = {}
         self.single_client_id = None
         self.model = model
+        self.screenshot_dict = {}
 
         # Used for logging peformance
         self.predictions_asked_for = 0
@@ -60,6 +61,10 @@ class RLAgent:
     # doing async training, we add the current client history to the training sample queue (the trainer MAY not need
     # the full history (i.e. DQN just needs the most recent experience), but we're including it for ones that do (i.e. SARSA)
     def store_experience(self, client_id, current_state, action, async_training=True):
+        if current_state.get_num_frames() < Constants.NUM_FRAMES_PER_STATE:
+            print("DROPPING EXPERIENCE")
+            return
+
         # If this is the first time we're seeing this client, create a list to store experiences for that client
         experience = None
         add_to_training_queue = True
@@ -89,12 +94,30 @@ class RLAgent:
                 self.sample_queue.put_nowait(mem_copy)
             else:
                 self.dropped = self.dropped + 1
-                print("Dropping experience: "+str(self.dropped))
+                #print("Dropping experience: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id
 
         self.log_average_reward(experience)
+
+    def store_screenshot_for_client_from_clipboard(self, clientID):
+        if clientID not in self.screenshot_dict:
+            self.screenshot_dict[clientID] = []
+
+        image = ImageGrab.grabclipboard()
+        while image == None:
+            image = ImageGrab.grabclipboard()
+            print("WAITING")
+
+        self.screenshot_dict[clientID].append(image)
+
+    def get_screenshot_buffer_for_client(self, clientID, clear=False):
+        ss = self.screenshot_dict[clientID]
+        if clear:
+            self.screenshot_dict[clientID] = []
+
+        return ss
 
     def log_average_reward(self, experience):
         reward = self.rewarder.calculate_reward(experience)

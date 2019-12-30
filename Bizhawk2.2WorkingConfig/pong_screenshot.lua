@@ -24,15 +24,15 @@ end
 -- CONSTANTS
 -- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
 -- number is > 1, this means that the bot will HOLD down the current action N number of frames
-local TF_SERVER_SAMPLE_SKIP_RATE = 2
+local TF_SERVER_SAMPLE_SKIP_RATE = 4
 
--- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
--- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
--- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local SCREENSHOT_INTERVAL = 2
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
+
+client.setscreenshotosd(true)
+client.displaymessages(false)
 
 local restarting = false
 local sentTerminalState = false
@@ -64,7 +64,7 @@ function make_pong_random()
         set_random_starting_vel()
         make_random = false
     elseif make_random == false and mainmemory.read_u32_be(countdown_timer) ~= TIMER_START_VALUE - 1 then
-        gui.drawString(0,120, "Getting ready to add randomly!", null, null, 9)
+        -- gui.drawString(0,120, "Getting ready to add randomly!", null, null, 9)
         make_random = true
     end
 end
@@ -72,7 +72,7 @@ end
 function set_random_starting_vel()
     local value = math.random(1, #random_y_vel_choices)
     mainmemory.write_s16_be(0x01C058, random_y_vel_choices[value])
-    gui.drawString(0,110, "Setting "..tostring(random_y_vel_choices[value]).." to ball's y vel", null, null, 9)
+    --gui.drawString(0,110, "Setting "..tostring(random_y_vel_choices[value]).." to ball's y vel", null, null, 9)
 end
 
 function waitingForBall()
@@ -174,11 +174,7 @@ end
 function getGameStateMap()
     local data = {}
     data["1score"] = get_player_1_score()
-    data["1y"] = get_player_1_ypos()
     data["2score"] = get_player_2_score()
-    data["2y"] = get_player_2_ypos()
-    data["ballx"] = get_ball_xpos()
-    data["bally"] = get_ball_ypos()
     return data
 end
 
@@ -205,10 +201,6 @@ function game_has_loaded()
 end
 
 function should_send_data_to_server()
-    -- If the debug flag is NOT set, then we need to first check to make sure that we have enough frames in the
-    -- current state bugger. Note that a "state" is a collection of one or more frames.
-    local buffersAreFull = List.length(currentStateBuffer) == STATE_FRAME_SIZE
-
     -- We also need to make sure that we are sending data to the server at the specified rate. For example, if the
     -- TF_SERVER_SAMPLE_SKIP_RATE equals '4', then we only send data to the server every 4 frames
     local frameIterationisDone = tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE == 0
@@ -218,7 +210,7 @@ function should_send_data_to_server()
     local gameIsOver = get_player_1_score() == 10 or get_player_2_score() == 10
     local haventSentTerminalState = (gameIsOver == false or sentTerminalState == false)
 
-    if buffersAreFull and frameIterationisDone and haventSentTerminalState then
+    if frameIterationisDone and haventSentTerminalState then
         return true
     else
         return false
@@ -227,9 +219,20 @@ function should_send_data_to_server()
 end
 
 -- Main scripting loop
+client.screenshottoclipboard()
 while true do
     make_pong_random()
     restarting = gameNeedsToRestart()
+
+
+    if tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE ~= 0 and (tfServerSampleIteration % SCREENSHOT_INTERVAL) - 1 == 0 and waitingForBall() == false then
+        client.screenshottoclipboard()
+    end
+
+
+    if tfServerSampleIteration % TF_SERVER_SAMPLE_SKIP_RATE ~= 0 and tfServerSampleIteration % SCREENSHOT_INTERVAL == 0 and waitingForBall() == false then
+        TF_CLIENT.notify_server_of_clipboard_screenshot(clientID)
+    end
 
     -- If the game is currently in progress, then keep training as normal. Note that we still need to send the current state when
     -- one of the players reaches 10. We just need to restart AFTER that happens.
@@ -239,13 +242,11 @@ while true do
         -- Gather state data and add it to our state buffer (knocking out the oldest entry)
         if waitingForBall() == false then
             local data = getGameStateMap()
-            add_game_state_to_state_buffer(data)
 
             -- If we have all the data we need, then send data to the server
             if should_send_data_to_server() then
                 if SEND_TO_SERVER then -- Set to false to fake sending to the server
-                    local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
-
+                    local resp = TF_CLIENT.send_screenshot_data_for_training(clientID, data)
                     currentAction = tonumber(resp)
                 end
 
@@ -264,7 +265,7 @@ while true do
             tfServerSampleIteration = tfServerSampleIteration + 1
         end
 
-        do_debug()
+        --do_debug()
     else
         -- Otherwise, keep pressing start until we trigger a new game
         joypad.set({["Start"] = "True" }, 1)
