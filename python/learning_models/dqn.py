@@ -37,6 +37,7 @@ class DQN(LearningModel):
         self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                    game_props.hidden_units_arr,game_props.learning_rate).build()
         self.session = session
+        self.prioritized_replay = True
 
     # DQN only needs one experience (which holds the prev state, prev action, and current state)
     def get_client_experience_memory_size(self):
