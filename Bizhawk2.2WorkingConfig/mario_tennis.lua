@@ -19,7 +19,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 4
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = 8
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
@@ -274,7 +274,6 @@ while true do
         perform_action(currentAction)
     end
 
-
     if (RESET_COUNTER == 0) then
         random_save_state = math.random(1, 4)
         savestate.loadslot(random_save_state)
@@ -298,7 +297,7 @@ while true do
         curr_1_score = p1_score()
         curr_2_score = p2_score()
         if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) then
-            RESET_COUNTER = TF_SERVER_SAMPLE_SKIP_RATE *  ((STATE_FRAME_SIZE / TF_SERVER_SAMPLE_SKIP_RATE) + 1)
+            RESET_COUNTER = TF_SERVER_SAMPLE_SKIP_RATE *  2
         end
     end
     tfServerSampleIteration = tfServerSampleIteration + 1

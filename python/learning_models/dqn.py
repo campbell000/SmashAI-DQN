@@ -22,6 +22,7 @@ MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
 UPDATE_TARGET_INTERVAL = 10000
 DOUBLE_DQN = True
+import datetime
 
 class DQN(LearningModel):
 
@@ -31,15 +32,13 @@ class DQN(LearningModel):
         self.random_action_probability = 1
         self.experiences = deque()
         self.number_training_iterations = 0
-        self.model = NeuralNetwork(MAIN_NETWORK, session, game_props.network_input_length,
-                                   game_props.network_output_length, game_props.hidden_units_arr,
-                                   game_props.learning_rate).build()
-        self.target_model = NeuralNetwork(TRAIN_NETWORK, session, game_props.network_input_length,
-                                   game_props.network_output_length, game_props.hidden_units_arr,
-                                   game_props.learning_rate).build()
+        self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                   game_props.hidden_units_arr, game_props.learning_rate).build()
+        self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                   game_props.hidden_units_arr,game_props.learning_rate).build()
         self.session = session
 
-    # DQN only needs one experience (which holds the prev state, prev action, and current state_
+    # DQN only needs one experience (which holds the prev state, prev action, and current state)
     def get_client_experience_memory_size(self):
         return 1
 
@@ -65,7 +64,8 @@ class DQN(LearningModel):
                 actions.append(NNUtils.get_one_hot(experience.prev_action, self.game_props.network_output_length))
                 rewards.append(self.rewarder.calculate_reward(experience))
 
-            self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
+            with self.session.as_default():
+                self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
             if self.game_props.anneal_epsilon and self.random_action_probability > self.game_props.epsilon_end:
@@ -110,11 +110,12 @@ class DQN(LearningModel):
                 ybatch.append(discounted_reward)
 
         # Learn that the previous states/actions led to the calculated rewards
-        self.session.run(main_nn["train"], feed_dict={
+        feed_dict = {
             main_nn["x"] : prev_states,
             main_nn["action"] : prev_actions,
             main_nn["actual_q_value"] : ybatch
-        })
+        }
+        self.session.run(main_nn["train"], feed_dict=feed_dict)
 
     def convert_to_network_input(self, state):
         return self.game_props.convert_state_to_network_input(state)
@@ -140,5 +141,6 @@ class DQN(LearningModel):
 
     def verbose_log_dump(self):
         print("\n***Verbose Log Dump*** ")
+        print(datetime.datetime.now())
         print("Num Training Iterations: "+str(self.number_training_iterations))
         print("RANDOM PROB: "+str(self.random_action_probability))

@@ -6,21 +6,21 @@ import numpy as np
 class MarioTennisGameprops(GameProps):
 
     def __init__(self):
-        self.NUM_BALL_SPIN_STATES = 15 # number of possible ball spin states (topspin, slice, etc)
+        self.NUM_BALL_SPIN_STATES = 16 # number of possible ball spin states (topspin, slice, etc)
         self.network_input_length = (Constants.NUM_FRAMES_PER_STATE * (14 + self.NUM_BALL_SPIN_STATES))
         self.network_output_length = 19
         super(MarioTennisGameprops, self).__init__(self.network_input_length, self.network_output_length)
 
         self.learning_rate = 1e-5
-        self.experience_buffer_size = 1000000
+        self.experience_buffer_size = 500000
         self.future_reward_discount = 0.99
         self.mini_batch_size = 32
         self.num_obs_before_training = 100000
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 8000000
+        self.num_steps_epislon_decay = 4000000
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-        self.hidden_units_arr = [5012, 2048, 2048, 1024]
+        self.hidden_units_arr = [5012, 5012, 2048, 1024]
 
         self.ball_spin_enums = {}
         self.ball_spin_enums[0] = 0
@@ -38,6 +38,7 @@ class MarioTennisGameprops(GameProps):
         self.ball_spin_enums[1] = 12
         self.ball_spin_enums[14] = 13
         self.ball_spin_enums[15] = 14
+        self.ball_spin_enums[16] = 15
 
     def get_num_possible_states(self):
         return self.num_possible_states
@@ -78,7 +79,7 @@ class MarioTennisGameprops(GameProps):
         try:
             normalized_ball_spin_val = self.ball_spin_enums[int(spin_val)]
         except:
-            print("We got an unexpected ball curve value: "+str(spin_val))
+            a = 3
 
         v = np.zeros(self.NUM_BALL_SPIN_STATES)
         try:

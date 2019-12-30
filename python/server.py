@@ -1,6 +1,16 @@
 # This file is the server that listens to requests from Bizhawk / Lua to train (and retrieve predictions for) the
 # Super Smash Bros bot.
 
+"""
+Multi-process to-do:
+-2. Verify that threading approach works
+-1. Come up with metrics to measure success
+0. Test performance of threads vs multiprocess
+1. Make the act of deciding whether to train completely isolated (probably should go to child training subprocess)
+2. Make sample queue shared
+3. Figure out how to share models accross threads (Manager will make things slower)
+"""
+
 PORT = 8081
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import tensorflow as tf
@@ -19,6 +29,7 @@ from rewarder.mario_tennis_rewarder import *
 from learning_models.dqn import DQN
 from rl_agent import RLAgent
 from rewarder.rewarder import *
+import threading
 
 # THESE VARIABLES SHOULD MATCH THE VARIABLES IN tensorflow-client.lua
 TRAIN = 0
@@ -37,11 +48,11 @@ DQN_MODEL = 1
 
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
-ASYNC_TRAINING = False
+ASYNC_TRAINING = True
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = MARIOTENNIS
+CURRENT_GAME = PONG
 MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk
@@ -99,7 +110,21 @@ def run():
         testHTTPServer_RequestHandler.rl_agent = RLAgent(sess, props[0], props[1], model)
         httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
         print('running server...')
+
+        # If async training, then spawn an endless loop that trains the model when experiences have been placed in the
+        # queue
+        if ASYNC_TRAINING:
+            print("Starting async training thread!")
+            thread = threading.Thread(target=async_training, args=(tf.get_default_graph(),))
+            thread.daemon = True
+            thread.start()
+
         httpd.serve_forever()
+
+def async_training(g):
+    with g.as_default():
+        while True:
+            testHTTPServer_RequestHandler.rl_agent.train_model()
 
 # Returns the current game's hyper parameters and reward function
 def get_game_specific_params():

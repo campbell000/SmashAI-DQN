@@ -8,13 +8,12 @@ import ast
 # This class is responsible for building a Neural Network used to produce Q-Values
 class NeuralNetwork:
 
-    def __init__(self, name, session, input_length, output_length, nodes_per_layer_arr, learning_rate, is_training=True,
+    def __init__(self, name, input_length, output_length, nodes_per_layer_arr, learning_rate, is_training=True,
                  huber_loss=False, include_dropout=False, dropout_rate=0.05):
         self.input_length = input_length
         self.output_length = output_length
         self.learning_rate = learning_rate
         self.name = name
-        self.session = session
         self.is_training = is_training
         self.dropout_rate = dropout_rate
         self.map = None
