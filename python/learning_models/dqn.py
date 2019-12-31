@@ -46,6 +46,7 @@ class DQN(LearningModel):
                                           game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
                                                            game_props.img_scaling_factor).build()
         self.session = session
+        self.prioritized_replay = True
 
     # DQN only needs one experience (which holds the prev state, prev action, and current state)
     def get_client_experience_memory_size(self):

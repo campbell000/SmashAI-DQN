@@ -14,16 +14,17 @@ Game = {}
 -- CONSTANTS
 -- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
 -- number is > 1, this means that the bot will HOLD down the current action N number of frames
-local TF_SERVER_SAMPLE_SKIP_RATE = 2
+local TF_SERVER_SAMPLE_SKIP_RATE = 4
 
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = 8
 
 -- local variable to turn off communication with the server. Used for debugging purposes
-local SEND_TO_SERVER = false
-local RESET_THIS_FRAME = false
+local SEND_TO_SERVER = true
+local RESET_COUNTER = -1
+local JUST_RESTARTED = false
 
 local clientID = generateRandomString(12)
 
@@ -98,6 +99,10 @@ end
 
 function get_player_serving_for_scoring()
     return mainmemory.read_u32_be(0x246FA4)
+end
+
+function play_has_stopped()
+    return mainmemory.read_u32_be(0x138004)
 end
 
 function p1_score()
@@ -185,6 +190,14 @@ function get_game_state_map()
     data["by"] = get_ball_y()
     data["bz"] = get_ball_z()
     data["bspin"] = get_ball_spin_val()
+    data["play"] = play_has_stopped()
+    local jrint = 0
+    if JUST_RESTARTED == true then
+        jrint = 1
+        JUST_RESTARTED = false
+    end
+    data["restarted"] = jrint
+
     return data
 end
 
@@ -214,6 +227,10 @@ function do_debug()
     gui.drawString(0,110, "P2 Score: "..string.format(p2_score()), null, null, 9)
     gui.drawString(0,120, "Save State: "..string.format(random_save_state), null, null, 9)
     gui.drawString(0,130, "INPUTS: "..string.format(get_input_string()), null, null, 9)
+    gui.drawString(0,140, "RESET_COUNTER: "..string.format(RESET_COUNTER), null, null, 9)
+    gui.drawString(0,150, "PLAY HAS STOPPED: "..string.format(play_has_stopped()), null, null, 9)
+
+
     if not should_send_data_to_server() then
         gui.drawString(0,140, "SKIPPING: ", null, null, 9)
     end
@@ -236,6 +253,7 @@ end
 
 -- Do the next frame (and pray things don't break)
 while true do
+    joypad.setanalog({["X Axis"] = 0, ["Y Axis"] = 0}, 1)
     do_debug()
 
     -- collect data
@@ -251,16 +269,26 @@ while true do
         tfServerSampleIteration = 0
     end
 
+    -- Do the current action we have.
     if SEND_TO_SERVER then
-        -- Do the current action we have.
         perform_action(currentAction)
     end
 
-    if (RESET_THIS_FRAME) then
+    if (RESET_COUNTER == 0) then
         random_save_state = math.random(1, 4)
         savestate.loadslot(random_save_state)
         RESET_THIS_FRAME = false
         List.empty(currentStateBuffer)
+
+        -- Without this, we'll sometimes load multiple states in a row
+        curr_1_score = p1_score()
+        curr_2_score = p2_score()
+        prev_1_score = curr_1_score
+        prev_2_score = curr_2_score
+        RESET_COUNTER = -1
+        JUST_RESTARTED = true
+    elseif (RESET_COUNTER > 0) then
+        RESET_COUNTER = RESET_COUNTER - 1
     else
         -- If someone scored, load a new state and clear the sample buffer. NOTE: we only want to do this if we're sending data
         -- on this frame
@@ -268,8 +296,8 @@ while true do
         prev_2_score = curr_2_score
         curr_1_score = p1_score()
         curr_2_score = p2_score()
-        if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) and SEND_TO_SERVER then
-            RESET_THIS_FRAME = true
+        if (curr_2_score > prev_2_score or curr_1_score > prev_1_score) then
+            RESET_COUNTER = TF_SERVER_SAMPLE_SKIP_RATE *  2
         end
     end
     tfServerSampleIteration = tfServerSampleIteration + 1
