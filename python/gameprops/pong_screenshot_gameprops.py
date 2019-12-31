@@ -30,7 +30,7 @@ class PongScreenshotGameProps(GameProps):
         self.experience_buffer_size = 20000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 16
-        self.num_obs_before_training = 1000
+        self.num_obs_before_training = 16
 
         # Slowly make agent less random
         self.anneal_epsilon = True
@@ -38,6 +38,10 @@ class PongScreenshotGameProps(GameProps):
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
         self.img_scaling_factor = 3
+        self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * Constants.NUM_FRAMES_PER_STATE,
+                                          int(IMAGE_WIDTH/self.img_scaling_factor), 1)
+        self.model = None
+        self.session = None
 
     def is_conv(self):
         return True
@@ -58,4 +62,7 @@ class PongScreenshotGameProps(GameProps):
             else:
                 input = np.vstack((input, image_array))
 
-        return input
+
+        with self.session.as_default():
+            feed_dict = {self.model["rawInput"]: [input]}
+            return self.model["grayscaled"].eval(feed_dict=feed_dict)[0]

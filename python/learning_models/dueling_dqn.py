@@ -25,7 +25,7 @@ UPDATE_TARGET_INTERVAL = 10000
 DOUBLE_DQN = True
 import datetime
 
-class DQN(LearningModel):
+class DuelingDQN(LearningModel):
 
     # Initialize defaults for all of the variables
     def __init__(self, session, game_props, rewarder):
@@ -40,10 +40,10 @@ class DQN(LearningModel):
                                               game_props.hidden_units_arr,game_props.learning_rate).build()
         else:
             self.model = ConvolutionalNeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
-                                       game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
+                                                    game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
                                                     game_props.img_scaling_factor).build()
             self.target_model = ConvolutionalNeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
-                                          game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
+                                                           game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
                                                            game_props.img_scaling_factor).build()
         self.session = session
 

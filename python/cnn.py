@@ -12,7 +12,8 @@ import uuid
 # This class is responsible for building a Neural Network used to produce Q-Values
 class ConvolutionalNeuralNetwork:
 
-    def __init__(self, name, input_length, output_length, nodes_per_fc_layer_arr, cnn_params, learning_rate, batch_size, img_scaling_factor, is_training=True):
+    def __init__(self, name, input_length, preprocessed_input_length, output_length, nodes_per_fc_layer_arr, cnn_params,
+                 learning_rate, batch_size, img_scaling_factor, is_training=True):
         self.input_length = input_length
         self.output_length = output_length
         self.learning_rate = learning_rate
@@ -24,6 +25,7 @@ class ConvolutionalNeuralNetwork:
         self.is_huber_loss = huber_loss
         self.batch_size = batch_size
         self.img_scaling_factor = img_scaling_factor
+        self.preprocessed_input_length = preprocessed_input_length
 
     def get_map(self):
         return self.map
@@ -35,14 +37,15 @@ class ConvolutionalNeuralNetwork:
     def build(self):
         with tf.variable_scope(self.name):
             # image preprocessing: convert to grayscale and downsample
-            x = tf.placeholder(tf.float32, shape=((None, ) + self.input_length)) # rows of input vectors
-            input_shape = x.get_shape().as_list()
+            rawInput = tf.placeholder(tf.float32, shape=((None, ) + self.input_length)) # rows of input vectors
+            input_shape = rawInput.get_shape().as_list()
             height = int(input_shape[1] / self.img_scaling_factor)
             width = int(input_shape[2] / self.img_scaling_factor)
-            downsampled = tf.image.resize_images(x,size=[height, width],
+            downsampled = tf.image.resize_images(rawInput,size=[height, width],
                                                  method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
             grayscaled = tf.image.rgb_to_grayscale(downsampled)
 
+            x = tf.placeholder(tf.float32, ((None, ) + self.preprocessed_input_length))
             actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
             rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
@@ -71,9 +74,6 @@ class ConvolutionalNeuralNetwork:
                 layers.append(["layer "+str(layer), hidden_layer])
                 prev_layer = hidden_layer
 
-
-# pool2_output_flat = tf.reshape(pool2_output, [-1, final_img_size*final_img_size*64])\n",
-
             # Flatten to feed into last FC output layer
             flattened_last_layer = tf.layers.flatten(prev_layer)
 
@@ -88,6 +88,7 @@ class ConvolutionalNeuralNetwork:
             train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
 
             self.map = {
+                "rawInput" : rawInput,
                 "layers" : layers,
                 "c" : [self.input_length, self.output_length],
                 "x" : x,

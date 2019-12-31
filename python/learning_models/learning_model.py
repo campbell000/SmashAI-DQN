@@ -13,6 +13,9 @@ class LearningModel(ABC):
     def get_client_experience_memory_size(self):
         pass
 
+    def get_model(self):
+        pass
+
     # Given a game state, returns the best action to perform
     def get_action(self, game_data):
         pass

@@ -53,7 +53,6 @@ DQN_MODEL = 1
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
 ASYNC_TRAINING = True
-
 USING_CLIPBOARD_SCREENSHOTS = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
@@ -125,6 +124,7 @@ def run():
         server_address = ('0.0.0.0', PORT)
         model = get_learning_model(sess, props[0], props[1])
         testHTTPServer_RequestHandler.rl_agent = RLAgent(sess, props[0], props[1], model)
+        do_post_init(props[0], testHTTPServer_RequestHandler.rl_agent, sess)
         httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
         print('running server...')
 
@@ -153,6 +153,20 @@ def get_game_specific_params():
         return [SSBGameProps(), SSBRewarder()]
     elif CURRENT_GAME == MARIOTENNIS:
         return [MarioTennisGameprops(), MarioTennisRewarder()]
+    elif CURRENT_GAME == TESTING:
+        print("AGHHHH")
+
+# Returns the current game's hyper parameters and reward function
+def do_post_init(gameprops, rl_agent, session):
+    if CURRENT_GAME == PONG:
+        return
+    if CURRENT_GAME == PONG_SCREENSHOT:
+        gameprops.session = session
+        gameprops.model = rl_agent.model.get_model()
+    elif CURRENT_GAME == SMASH:
+        return
+    elif CURRENT_GAME == MARIOTENNIS:
+        return
     elif CURRENT_GAME == TESTING:
         print("AGHHHH")
 
