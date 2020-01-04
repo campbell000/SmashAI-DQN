@@ -53,11 +53,12 @@ DQN_MODEL = 1
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
 ASYNC_TRAINING = True
+DUELING_DQN = True
 USING_CLIPBOARD_SCREENSHOTS = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = MARIOTENNIS
+CURRENT_GAME = PONG
 MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk
@@ -115,6 +116,7 @@ def run():
     print('starting server...')
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
+    tf.variance_scaling_initializer(scale=2)
     sess = tf.Session(config=config)
 
     with sess.as_default():
@@ -173,6 +175,7 @@ def do_post_init(gameprops, rl_agent, session):
 # Returns the current learning model (i.e. DQN, SARSA, etc)
 def get_learning_model(sess, gameprops, rewarder):
     if MODEL == DQN_MODEL:
-        return DQN(sess, gameprops, rewarder)
+        print("Building DQN model. Dueling: "+str(DUELING_DQN))
+        return DQN(sess, gameprops, rewarder, DUELING_DQN)
 
 run()

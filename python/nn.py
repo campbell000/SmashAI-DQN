@@ -3,13 +3,14 @@ import tensorflow as tf
 from collections import deque
 from tensorflow.losses import huber_loss
 import random
+import copy
 import ast
 
 # This class is responsible for building a Neural Network used to produce Q-Values
 class NeuralNetwork:
 
     def __init__(self, name, input_length, output_length, nodes_per_layer_arr, learning_rate, is_training=True,
-                 huber_loss=False, include_dropout=False, dropout_rate=0.05):
+                 huber_loss=True, include_dropout=False, dropout_rate=0.05):
         self.input_length = input_length
         self.output_length = output_length
         self.learning_rate = learning_rate
@@ -60,6 +61,7 @@ class NeuralNetwork:
 
             # Do huber loss if specified. Otherwise do MSE
             if self.is_huber_loss:
+                print("Doing Huber Loss")
                 q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
                 loss = huber_loss(rewards, q_action)
             else:
@@ -84,18 +86,21 @@ class NeuralNetwork:
     # This method builds and returns the model for estimating Q values
     def build_dueling(self):
         with tf.variable_scope(self.name):
+            # Make a copy of the nodes-per-layer array so that we don't modify the array for other consumers
+            nodes_per_layer = copy.deepcopy(self.nodes_per_layer_arr)
+
             x = tf.placeholder(tf.float32, [None, self.input_length]) # rows of input vectors
             actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
             rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
 
             # Take the last layer's number of nodes and use that for the number of nodes for both the value and advantage layer
-            last_fc_layer_num_nodes = self.nodes_per_layer_arr.pop()
+            last_fc_layer_num_nodes = nodes_per_layer.pop()
 
             # Create X numbers of layers
             prev_drop_layer = None
-            for layer in range(len(self.nodes_per_layer_arr)):
-                num_nodes = self.nodes_per_layer_arr[layer]
+            for layer in range(len(nodes_per_layer)):
+                num_nodes = nodes_per_layer[layer]
 
                 # If first layer, use the NN's input
                 if prev_drop_layer is None:
@@ -127,6 +132,7 @@ class NeuralNetwork:
 
             # Do huber loss if specified. Otherwise do MSE
             if self.is_huber_loss:
+                print("Doing Huber Loss")
                 q_action = tf.reduce_sum(tf.multiply(output_layer, actions), reduction_indices=1)
                 loss = huber_loss(rewards, q_action)
             else:

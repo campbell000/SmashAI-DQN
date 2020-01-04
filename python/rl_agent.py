@@ -40,7 +40,7 @@ class RLAgent:
 
         # Used for logging peformance
         self.predictions_asked_for = 0
-        self.average_reward_interval = 10000
+        self.average_reward_interval = 20000
         self.reward_sum = 0
         self.dropped = 0
 
@@ -62,7 +62,7 @@ class RLAgent:
     # the full history (i.e. DQN just needs the most recent experience), but we're including it for ones that do (i.e. SARSA)
     def store_experience(self, client_id, current_state, action, async_training=True):
         if current_state.get_num_frames() < Constants.NUM_FRAMES_PER_STATE:
-            print("DROPPING EXPERIENCE")
+            print("DROPPING EXPERIENCE because the number of frames is wrong")
             return
 
         # If this is the first time we're seeing this client, create a list to store experiences for that client
@@ -72,6 +72,7 @@ class RLAgent:
             self.client_experience_queue[client_id] = deque()
             experience = Experience(current_state, action, current_state, action) # create a "dummy" state just to make things simple for the first time
             add_to_training_queue = False
+            print("Just met "+str(client_id))
         else:
             # Create a NEW experience based off the prev state and prev action
             prev_exp = self.client_experience_queue[client_id][-1]
@@ -94,7 +95,7 @@ class RLAgent:
                 self.sample_queue.put_nowait(mem_copy)
             else:
                 self.dropped = self.dropped + 1
-                #print("Dropping experience: "+str(self.dropped))
+                print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id

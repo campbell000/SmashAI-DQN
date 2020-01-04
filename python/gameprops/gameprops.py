@@ -39,9 +39,12 @@ class GameProps():
 
         # Slowly make agent less random
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 1200000
-        self.epsilon_end =  0.05
+        self.num_steps_epislon_decay = 1000000
+        self.epsilon_end =  0.1
+        self.second_num_steps_epislon_decay = 1000000
+        self.second_epsilon_end = 0.01
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
+        self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps_epislon_decay
         self.hidden_units_arr = [256, 256, 256]
 
     def convert_state_to_network_input(self, state):
@@ -62,6 +65,9 @@ class GameProps():
         print("num_steps_epislon_decay: "+str(self.num_steps_epislon_decay))
         print("epsilon_end: "+str(self.epsilon_end))
         print("epsilon_step_size: "+str(self.epsilon_step_size))
+        print("SECOND num_steps_epislon_decay: "+str(self.second_num_steps_epislon_decay))
+        print("SECOND epsilon_end: "+str(self.second_epsilon_end))
+        print("SECOND epsilon_step_size: "+str(self.second_epsilon_step_size))
         print("hidden_units_arr: "+str(self.hidden_units_arr))
         print("Learning Rate: "+str(self.learning_rate))
 

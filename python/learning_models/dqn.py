@@ -28,23 +28,33 @@ import datetime
 class DQN(LearningModel):
 
     # Initialize defaults for all of the variables
-    def __init__(self, session, game_props, rewarder):
+    def __init__(self, session, game_props, rewarder, is_dueling):
         super(DQN, self).__init__(session, game_props, rewarder)
         self.random_action_probability = 1
         self.experiences = deque()
         self.number_training_iterations = 0
         if not game_props.is_conv():
             self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
-                                       game_props.hidden_units_arr, game_props.learning_rate).build()
+                                       game_props.hidden_units_arr, game_props.learning_rate)
             self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
-                                              game_props.hidden_units_arr,game_props.learning_rate).build()
+                                              game_props.hidden_units_arr,game_props.learning_rate)
         else:
             self.model = ConvolutionalNeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
-                                                    game_props.img_scaling_factor).build()
+                                                    game_props.img_scaling_factor)
             self.target_model = ConvolutionalNeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
                                           game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
-                                                           game_props.img_scaling_factor).build()
+                                                           game_props.img_scaling_factor)
+
+        # If using Dueling DQN, build a NN that separates the value and advantage functions
+        if is_dueling:
+            self.model = self.model.build_dueling()
+            self.target_model = self.target_model.build_dueling()
+        else:
+            self.model = self.model.build()
+            self.target_model = self.target_model.build()
+
+
         self.session = session
         self.prioritized_replay = True
 
@@ -92,13 +102,22 @@ class DQN(LearningModel):
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
-            if self.game_props.anneal_epsilon and self.random_action_probability > self.game_props.epsilon_end:
-                self.random_action_probability -= self.game_props.epsilon_step_size
+            # TODO: Revisit this if planning to use multiple agents. We might want to decrease this probability
+            # TODO: on getting actions, rather than every training sample.
+            self.adjust_random_action_prob()
 
         self.number_training_iterations += 1
 
         if self.number_training_iterations % 10000 == 0:
             self.verbose_log_dump()
+
+    def adjust_random_action_prob(self):
+        if self.game_props.anneal_epsilon:
+            if self.random_action_probability > self.game_props.epsilon_end:
+                self.random_action_probability -= self.game_props.epsilon_step_size
+            elif self.random_action_probability > self.game_props.second_epsilon_end:
+                self.random_action_probability -= self.game_props.second_epsilon_step_size
+
 
     def train_neural_networks(self, experience_batch, prev_states, curr_states, prev_actions, rewards):
         # Every N iterations, update the training network with the model of the "real" network
