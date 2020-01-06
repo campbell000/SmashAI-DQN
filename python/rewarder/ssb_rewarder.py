@@ -3,12 +3,21 @@ from rewarder.rewarder import *
 DEATH_STATES = [0, 1, 2, 3] # TAKEN FROM gameConstants.lua!
 STAGE_SAFE_BOUNDARY = 2250
 class SSBRewarder(AbstractRewarder):
-    def __init__(self):
+    def __init__(self, use_grounded=False, use_stay_on_stage=False):
         self.damage_multiplier = 0.001
         self.life_multiplier = 1
         self.living_multiplier = 0.001
         self.is_grounded_multiplier = 0.001
         self.stay_on_stage_multiplier = 0.001
+        self.use_grounded = use_grounded
+        self.use_stay_on_stage = use_stay_on_stage
+
+        print("SSB REWARDER: ")
+        print("  DAMAMGE MULTIPLIER: "+str(self.damage_multiplier))
+        print("  LIFE MULTIPLIER: "+str(self.life_multiplier))
+        print("  LIVING MULTIPLIER: "+str(self.living_multiplier))
+        print("  GROUNDED REWARD: "+str(self.use_grounded))
+        print("  STAGE REWARD: "+str(self.use_stay_on_stage))
 
     def state_is_death(self, state):
         if state in DEATH_STATES:
@@ -69,15 +78,17 @@ class SSBRewarder(AbstractRewarder):
             reward += self.living_multiplier
 
         # Being on the ground is generally safer
-        is_in_air = current.get_frame(last_frame_idx).get("1is_air")
-        if is_in_air == 0:
-            reward += self.is_grounded_multiplier
+        if self.use_grounded:
+            is_in_air = current.get_frame(last_frame_idx).get("1is_air")
+            if is_in_air == 0:
+                reward += self.is_grounded_multiplier
 
         # Staying within the stage bounds is generally safer
-        if abs(current.get_frame(last_frame_idx).get("1xp")) > STAGE_SAFE_BOUNDARY:
-            reward -= self.stay_on_stage_multiplier
-        else:
-            reward += self.stay_on_stage_multiplier
+        if self.use_stay_on_stage:
+            if abs(current.get_frame(last_frame_idx).get("1xp")) > STAGE_SAFE_BOUNDARY:
+                reward -= self.stay_on_stage_multiplier
+            else:
+                reward += self.stay_on_stage_multiplier
 
         if for_current_verbose:
             print("REWARDS FOR CURRENT experience: ")
