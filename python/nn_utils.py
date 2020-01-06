@@ -34,4 +34,11 @@ class NeuralNetworkUtils:
             for bidx, b in enumerate(a):
                 a[bidx] = b[0]
 
+    # normalizes between -1 and 1
+    @staticmethod
+    def normalize(x, min, max):
+        if min >= max:
+            raise Exception("CANT DO THIS")
+        return 2 * ((x - min) / (max - min)) - 1
+
 
