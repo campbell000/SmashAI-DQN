@@ -2,9 +2,9 @@ from gameprops.gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 import numpy as np
-import imageio
-from PIL import Image
-import PIL
+#import imageio
+#from PIL import Image
+#import PIL
 import uuid
 
 # A subclass of the GameProps specific to Pong.

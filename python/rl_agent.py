@@ -19,7 +19,7 @@ import queue
 import copy
 import datetime
 import threading
-from PIL import ImageGrab
+#from PIL import ImageGrab
 
 class RLAgent:
     """
@@ -95,7 +95,8 @@ class RLAgent:
                 self.sample_queue.put_nowait(mem_copy)
             else:
                 self.dropped = self.dropped + 1
-                print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
+                if self.dropped % 1000 == 0:
+                    print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id

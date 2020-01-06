@@ -17,7 +17,7 @@ import uuid
 from utils import Logger
 from gameprops.gameprops import *
 from cnn import ConvolutionalNeuralNetwork
-from PIL import Image
+#from PIL import Image
 
 MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
