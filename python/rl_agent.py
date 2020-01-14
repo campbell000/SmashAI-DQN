@@ -94,9 +94,17 @@ class RLAgent:
             if not self.sample_queue.full():
                 self.sample_queue.put_nowait(mem_copy)
             else:
-                self.dropped = self.dropped + 1
-                if self.dropped % 1000 == 0:
-                    print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
+                # If the experience is terminal, wait until there's room
+                # TODO: WILL NOT WORK WELL FOR ASYNCHRONOUS CLIENTS
+                if self.rewarder.experience_is_terminal(experience):
+                    print("Queue is full but waiting for opening because this experience is terminal!")
+                    self.sample_queue.put(mem_copy)
+                    print("Done putting terminal experience in queue")
+                else:
+                    self.dropped = self.dropped + 1
+                    if self.dropped % 1000 == 0:
+                        print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
+
 
         if not async_training:
             self.single_client_id = client_id

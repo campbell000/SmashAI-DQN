@@ -18,15 +18,16 @@ class MarioTennisGameprops(GameProps):
         self.mini_batch_size = 32
         self.num_obs_before_training = 10000
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 4000000
+        self.num_steps_epislon_decay = 1000000
         self.epsilon_end =  0.1
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
-        self.hidden_units_arr = [5012, 5012, 2048, 2024]
+        self.hidden_units_arr = [1024, 1024, 1024, 1024, 512]
 
         # Second schedule so that it goes from 1 to 0.1 in 4,000,000, and then from 0.1 to 0.01 in 1,000,000
         self.second_num_steps_epislon_decay = 1000000
         self.second_epsilon_end = 0.01
-        self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps_epislon_decay
+        self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps
+        _epislon_decay
 
         self.ball_spin_enums = {}
         self.ball_spin_enums[0] = 0

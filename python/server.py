@@ -53,7 +53,7 @@ DQN_MODEL = 1
 # Dictates whether or not the training happens ONLY when a client asks for an action, or whether training happens
 # on a separate thread
 ASYNC_TRAINING = True
-DUELING_DQN = True
+DUELING_DQN = False
 USING_CLIPBOARD_SCREENSHOTS = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)

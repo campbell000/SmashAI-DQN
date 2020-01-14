@@ -7,7 +7,7 @@ class MarioTennisRewarder(AbstractRewarder):
 
     def __init__(self):
         super(AbstractRewarder, self).__init__()
-        self.serve_reward = 0.001
+        self.serve_reward = 0.01
 
     def experience_is_terminal(self, experience):
         reward = self.calculate_reward(experience)
