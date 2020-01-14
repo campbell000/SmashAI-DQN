@@ -28,11 +28,13 @@ import datetime
 class DQN(LearningModel):
 
     # Initialize defaults for all of the variables
-    def __init__(self, session, game_props, rewarder, is_dueling):
+    def __init__(self, session, game_props, rewarder, is_dueling, use_sorted_rewards=True):
         super(DQN, self).__init__(session, game_props, rewarder)
         self.random_action_probability = 1
         self.experiences = deque()
         self.number_training_iterations = 0
+        self.sorted_buffer = []
+        self.use_sorted_rewards = use_sorted_rewards
         if not game_props.is_conv():
             self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr, game_props.learning_rate)
@@ -53,6 +55,9 @@ class DQN(LearningModel):
         else:
             self.model = self.model.build()
             self.target_model = self.target_model.build()
+
+        if self.use_sorted_rewards:
+            print("USING SORTED REWARDS FOR SPARSE GAMES")
 
 
         self.session = session
@@ -90,7 +95,7 @@ class DQN(LearningModel):
                 prev_states.append(self.convert_to_network_input(experience.prev_state))
                 curr_states.append(self.convert_to_network_input(experience.curr_state))
                 actions.append(NNUtils.get_one_hot(experience.prev_action, self.game_props.network_output_length))
-                rewards.append(self.rewarder.calculate_reward(experience))
+                rewards.append(experience.reward)
 
             with self.session.as_default():
                 #arr = self.convert_to_network_input(experience_batch[0].curr_state)
@@ -136,8 +141,9 @@ class DQN(LearningModel):
         ybatch = []
         for i in range(len(experience_batch)):
             target = None
+            exx = experience_batch[i]
             # If the state is terminal, give the bot the reward for the state
-            if self.rewarder.experience_is_terminal(experience_batch[i]):
+            if experience_batch[i].is_terminal:
                 ybatch.append(rewards[i])
 
             # Otherwise, collect the reward plus the reward for the best action (multiplied by the future discount)
@@ -187,7 +193,17 @@ class DQN(LearningModel):
         num_total_experiences = len(self.experiences)
         if num_total_experiences < self.game_props.mini_batch_size:
             num_samples = num_total_experiences
-        return random.sample(self.experiences, num_samples)
+
+        if self.use_sorted_rewards:
+            if self.number_training_iterations % 100 == 0 or len(self.sorted_buffer) == 0:
+                self.sorted_buffer = sorted(self.experiences, key=lambda ex: abs(ex.reward), reverse=True)
+            p = np.array([0.995 ** i for i in range(len(self.sorted_buffer))])
+            p = p / sum(p)
+            sample_idxs = np.random.choice(np.arange(len(self.sorted_buffer)), size=num_samples, p=p)
+            sample_output = [self.sorted_buffer[idx] for idx in sample_idxs]
+            return sample_output
+        else:
+            return random.sample(self.experiences, num_samples)
 
     def verbose_log_dump(self):
         print("\n***Verbose Log Dump*** ")

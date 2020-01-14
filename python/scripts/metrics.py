@@ -8,8 +8,7 @@ from datetime import datetime
 import csv
 
 FILES = [
-    "20200105-pong-dueling-huber.txt",
-    "20191216-async_reward_logs.txt"
+    "smash-20200112.txt"
 ]
 
 data = []

@@ -79,7 +79,9 @@ class RLAgent:
             experience = Experience(prev_exp.curr_state, prev_exp.curr_action, current_state, action)
 
         # TODO: uncomment to see the current action's reward
-        print("Current Reward: "+str(self.rewarder.calculate_reward(experience))+" AND IS TERMINAL: "+str(self.rewarder.experience_is_terminal(experience)))
+        experience.reward = self.rewarder.calculate_reward(experience)
+        experience.is_terminal = self.rewarder.experience_is_terminal(experience)
+        #print("Current Reward: "+str(experience.reward)+" AND IS TERMINAL: "+str(experience.is_terminal))
 
         # Store the client's experience, but ensure that each client's history is limited
         client_memory = self.client_experience_queue[client_id]
@@ -94,9 +96,16 @@ class RLAgent:
             if not self.sample_queue.full():
                 self.sample_queue.put_nowait(mem_copy)
             else:
-                self.dropped = self.dropped + 1
-                if self.dropped % 1000 == 0:
-                    print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
+                # If the experience is terminal, wait until there's room
+                # TODO: WILL NOT WORK WELL FOR ASYNCHRONOUS CLIENTS
+                if self.rewarder.experience_is_terminal(experience):
+                    print("Queue is full but waiting for opening because this experience is terminal!")
+                    self.sample_queue.put(mem_copy)
+                    print("Done putting terminal experience in queue")
+                else:
+                    self.dropped = self.dropped + 1
+                    if self.dropped % 1000 == 0:
+                        print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id
@@ -148,6 +157,8 @@ class Experience:
         self.prev_action = prev_action
         self.curr_state = curr_state
         self.curr_action = curr_action
+        self.reward = -999
+        self.is_terminal = -999
 
     def get_prev_state(self):
         return self.prev_state
