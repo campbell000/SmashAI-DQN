@@ -17,7 +17,7 @@ class SSBGameProps(GameProps):
         input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 13) * 2)
 
         # After that, call the superclass' init method as normal
-        super(SSBGameProps, self).__init__(Games.SSB, input_length, OUTPUT_LENGTH)
+        super(SSBGameProps, self).__init__(input_length, OUTPUT_LENGTH)
 
     # This method converts all of the ssb data to a format that can be fed as inputs into the network
     def convert_state_to_network_input(self, state):

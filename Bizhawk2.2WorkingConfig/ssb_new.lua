@@ -22,7 +22,7 @@ end
 -- CONSTANTS
 -- This variable is the number of frames we skip before sending / receiving data from the tf server. Note that when this
 -- number is > 1, this means that the bot will HOLD down the current action N number of frames
-local TF_SERVER_SAMPLE_SKIP_RATE = 2
+local TF_SERVER_SAMPLE_SKIP_RATE = 4
 
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
