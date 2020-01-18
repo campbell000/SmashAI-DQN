@@ -27,7 +27,9 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 4
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = 2
+
+local STATE_COLLECTION_INTERVAL = 2
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
@@ -320,7 +322,9 @@ end
 while true do
     -- Gather state data and add it to our state buffer (knocking out the oldest entry)
     local data = getGameStateMap()
-    local popped_frame = add_game_state_to_state_buffer(data)
+    if tfServerSampleIteration % STATE_COLLECTION_INTERVAL == 0 then
+        local popped_frame = add_game_state_to_state_buffer(data)
+    end
 
     -- If we have all the data we need, then send data to the server
     if should_send_data_to_server(popped_frame) then
