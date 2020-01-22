@@ -3,12 +3,16 @@ This project contains code that allows DQN agents to learn and perform well at P
 
 ## The results
 ### Mario Tennis
+Trained on a Hard Mario CPU (bot is Daisy)
 Video: https://www.youtube.com/watch?v=4HNpX6kmq0Q
 Averge Reward over time:
 ![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/mariotennis/iterations-vs-reward.png)
 
-
-
+### Super Smash Brothers
+Trained on a level 9 Pikachu (bot is Yoshi)
+Video: https://www.youtube.com/watch?v=9P_Osy5-Fno
+Averge Reward over time:
+![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/smash/iterations-vs-reward.png)
 
 ## Essential Configuration
 For now, we have to use the "faster, less reliable (memory leaks!)" version of Lua in Bizhawk. So, to configire Bizhawk and test that it's working, do the following:
