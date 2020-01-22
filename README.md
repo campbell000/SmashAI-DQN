@@ -4,7 +4,9 @@ This project contains code that allows DQN agents to learn and perform well at P
 ## The results
 ### Mario Tennis
 Video: https://www.youtube.com/watch?v=4HNpX6kmq0Q
-Results:
+Results: ![Image of Yaktocat](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/mariotennis/iterations-vs-reward.png)
+
+
 
 
 ## Essential Configuration
