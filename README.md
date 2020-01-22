@@ -1,5 +1,11 @@
 # DeepLearningProject
-This project includes a working copy of Bizhawk (the most recent at this point in time) and a working integration of luasockets. For whatever reason, this is difficult to do. So for convenience, I am uploading the entire bizhawk binary.
+This project contains code that allows DQN agents to learn and perform well at Pong, Mario Tennis, and Super Smash Brothers (all for the N64). It consists of a python server (which does all the ML via tensorflow) and a lua client (runnable via EmuHawk's Lua Script Console). While this project may not ever be in "publishable" state, I think that the majority of it could be useful for those looking to use Deep Reinforcement Learning algorithms on NES, SNES, N64, and other classic console games.
+
+## The results
+### Mario Tennis
+Video: https://www.youtube.com/watch?v=4HNpX6kmq0Q
+Results:
+
 
 ## Essential Configuration
 For now, we have to use the "faster, less reliable (memory leaks!)" version of Lua in Bizhawk. So, to configire Bizhawk and test that it's working, do the following:
@@ -18,13 +24,7 @@ For now, we have to use the "faster, less reliable (memory leaks!)" version of L
 ## Troubleshooting
 - If you get "%1 is not a valid Win32 Application" when downloading this repo and running the lua scripts in bizhawk, take the files from the luasockets64.zip folder and put them in the sockets/mime folders (overwriting the files already contained in them).
 
-## Assumptions
-For simplicity and speeding up development, the following assumptions/shortcuts are made
-- The bot is always first player.
-- The bot is always yoshi, and the opponent is always pikachu
-- The game is always played on dreamland.
-
 ## Credits
 - Useful post for getting me started: https://stackoverflow.com/questions/33428382/add-luasocket-to-program-bizhawk-shipped-with-own-lua-environment
-- Good example of Lua+Bizhawk+Tensorflow in action: https://github.com/rameshvarun/NeuralKart. The author was also very helpful in answering some questions I had, and gave me the tip that his code only worked with Bizhawk 1.13.1. I eventually learned that later versions switched the Lua implementations, which led me to discover that switching the lua version eliminated the "dynamic libraries not supported" error. **My implementation of this is unique, but I got the idea from this repo**
+- Good example of Lua+Bizhawk+Tensorflow in action: https://github.com/rameshvarun/NeuralKart. The author was also very helpful in answering some questions I had, and gave me the tip that his code only worked with Bizhawk 1.13.1. I eventually learned that later versions switched the Lua implementations, which led me to discover that switching the lua version eliminated the "dynamic libraries not supported" error.
 - Very useful repo that provided me with memory addresses and functions for extracting the important game state values from memory: https://github.com/Isotarge/ScriptHawk
