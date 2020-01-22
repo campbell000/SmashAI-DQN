@@ -26,8 +26,7 @@ class MarioTennisGameprops(GameProps):
         # Second schedule so that it goes from 1 to 0.1 in 4,000,000, and then from 0.1 to 0.01 in 1,000,000
         self.second_num_steps_epislon_decay = 1000000
         self.second_epsilon_end = 0.01
-        self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps
-        _epislon_decay
+        self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps_epislon_decay
 
         self.ball_spin_enums = {}
         self.ball_spin_enums[0] = 0

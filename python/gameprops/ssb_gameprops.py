@@ -29,13 +29,13 @@ class SSBGameProps(GameProps):
 
         # Slowly make agent less random
         self.anneal_epsilon = True
-        self.num_steps_epislon_decay = 1000000
+        self.num_steps_epislon_decay = 2000000
         self.epsilon_end =  0.1
         self.second_num_steps_epislon_decay = 1000000
         self.second_epsilon_end = 0.01
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
         self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps_epislon_decay
-        self.hidden_units_arr = [2000, 1024, 512, 256, 128]
+        self.hidden_units_arr = [5000, 5000, 2000, 2000, 1000]
 
     # This method converts all of the ssb data to a format that can be fed as inputs into the network
     def convert_state_to_network_input(self, state):
