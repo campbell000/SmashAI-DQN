@@ -8,7 +8,7 @@ from datetime import datetime
 import csv
 
 FILES = [
-    "results/smash/smash-20200120-awesome.txt"
+    "results/smash/smash-yoshi-yoshi9.txt"
 ]
 
 data = []
@@ -58,8 +58,8 @@ plt.cla()
 plt.close()
 
 for i in range(len(xdatacontainer)):
-        xdata = datecontainer[i][:200]
-        ydata = ydatacontainer[i][:200]
+        xdata = datecontainer[i]
+        ydata = ydatacontainer[i]
         plt.plot(xdata, ydata, label=FILES[i])
 
 plt.legend()
@@ -69,8 +69,8 @@ plt.cla()
 plt.close()
 
 for i in range(len(xdatacontainer)):
-    xdata = datecontainer[i][:200]
-    ydata = xdatacontainer[i][:200]
+    xdata = datecontainer[i]
+    ydata = xdatacontainer[i]
     plt.plot(xdata, ydata, label=FILES[i])
 
 plt.legend()

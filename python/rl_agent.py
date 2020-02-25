@@ -37,6 +37,7 @@ class RLAgent:
         self.single_client_id = None
         self.model = model
         self.screenshot_dict = {}
+        self.saver = None
 
         # Used for logging peformance
         self.predictions_asked_for = 0
@@ -51,6 +52,9 @@ class RLAgent:
         self.session.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
         gameprops.dump()
+
+    def set_saver(self, saver, name):
+        self.model.set_saver(saver, name)
 
     # Given a state, gets an action.
     def get_prediction(self, game_data, is_training=True):

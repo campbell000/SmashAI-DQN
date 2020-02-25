@@ -33,7 +33,7 @@ local STATE_COLLECTION_INTERVAL = 2
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true
-
+local TRAIN = true
 local clientID = generateRandomString(12)
 
 -- This function returns the player
@@ -329,8 +329,14 @@ while true do
     -- If we have all the data we need, then send data to the server
     if should_send_data_to_server(popped_frame) then
         if SEND_TO_SERVER then -- Set to false to fake sending to the server
-            local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
-            currentAction = convertServerResponseToAction(resp)
+            if TRAIN then
+                local resp = TF_CLIENT.send_data_for_training(clientID, STATE_FRAME_SIZE, currentStateBuffer)
+                currentAction = convertServerResponseToAction(resp)
+            else
+                local resp = TF_CLIENT.send_data_but_dont_train(clientID, STATE_FRAME_SIZE, currentStateBuffer)
+                currentAction = convertServerResponseToAction(resp)
+            end
+
         end
         tfServerSampleIteration = 0
     end

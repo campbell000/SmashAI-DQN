@@ -15,7 +15,7 @@ class SSBGameProps(GameProps):
 
         self.num_possible_states = NUM_POSSIBLE_STATES
         # taken from number of non-state params in client data, multiplied by 2 players
-        input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 10) * 2)
+        input_length = (Constants.NUM_FRAMES_PER_STATE * (self.num_possible_states + 11) * 2)
 
         # After that, call the superclass' init method as normal
         super(SSBGameProps, self).__init__(input_length, OUTPUT_LENGTH)
@@ -53,6 +53,9 @@ class SSBGameProps(GameProps):
                 tf_data.append(NNUtils.normalize(data.get(str(player_id)+"yv"), -9000, 9000))
                 tf_data.append(NNUtils.normalize(data.get(str(player_id)+"shld"), 0, 55))
 
+                # TODO: change based on character
+                tf_data.append(NNUtils.normalize(data.get(str(player_id)+"jumps"), 0, 2))
+
                 # Add variable to indicate whether or not the player can jump
                 if data.get(str(player_id)+"jumps") == 0:
                     tf_data.append(-1)
@@ -81,6 +84,6 @@ class SSBGameProps(GameProps):
         except:
             print(state_value)
             print(v)
-            raise Exception("State value exceeded expected maximum number of states!")
+            print("State value exceeded expected maximum number of states!")
 
         return v

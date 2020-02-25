@@ -69,6 +69,12 @@ function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
+-- This function sends data to the server with the intention of training the model. It returns an action to perform as output
+function CLIENT.send_data_but_dont_train(clientID, buffer_size, currentState)
+    local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, EVAL)
+    return CLIENT.send_request_to_tensorflow_server(request_body)
+end
+
 function CLIENT.send_screenshot_data_for_training(clientID, data)
     local buffer = {}
 

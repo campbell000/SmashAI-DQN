@@ -12,3 +12,5 @@ python/avg_reward.txt
 python/__pycache__/*
 __pycache__/
 saved_sessions/
+checkpoints/
+saved_models

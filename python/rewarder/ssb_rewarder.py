@@ -4,9 +4,10 @@ DEATH_STATES = list(range(9)) # TAKEN FROM gameConstants.lua!
 STAGE_SAFE_BOUNDARY = 2250
 class SSBRewarder(AbstractRewarder):
     def __init__(self, use_grounded=True, use_stay_on_stage=True):
-        self.give_damage_multiplier = 0.1
-        self.take_damage_multiplier = 0.01
+        self.give_damage_multiplier = 0.08
+        self.take_damage_multiplier = 0.02
         self.life_multiplier = 1
+        self.death_multiplier = 5
         self.living_multiplier = 0.0001
         self.is_grounded_multiplier = 0.0001
         self.stay_on_stage_multiplier = 0.0001
@@ -79,12 +80,12 @@ class SSBRewarder(AbstractRewarder):
         # Calculate kills / deaths. Since death states occur for a few frames, check if death ocurred right after not-death ocurred.
         is_bot_dead = self.player_died(experience, 1)
         is_opponent_dead = self.player_died(experience, 2)
-        death_reward = is_opponent_dead - is_bot_dead
+        death_reward = (is_opponent_dead * self.life_multiplier) - (is_bot_dead * self.death_multiplier)
 
         # Calculate final reward by adding the damage-related rewards to the death-related rewards
         reward = (damage_dealt * self.give_damage_multiplier)
         reward -= (damage_taken * self.take_damage_multiplier)
-        reward += (death_reward * self.life_multiplier)
+        reward += death_reward
 
         # If the bot did not take damage and did not die, give it a little bit of a reward
         #if damage_taken == 0 and is_bot_dead == 0:

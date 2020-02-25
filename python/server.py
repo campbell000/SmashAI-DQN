@@ -56,6 +56,11 @@ ASYNC_TRAINING = True
 DUELING_DQN = False
 USING_CLIPBOARD_SCREENSHOTS = False
 
+USE_SAVED_MODEL = False
+MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level1.ckpt"
+CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
+SAVED_MODEL_NAME = "checkpoints/smash-mario-dk-level9.ckpt"
+
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
 CURRENT_GAME = SMASH
@@ -92,8 +97,8 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
             response = str(action)
         elif game_data.get_client_action() == EVAL:
-            action_index = self.rl_agent.get_prediction(game_data, is_training=False)
-            response = str(action_index)
+            action = self.rl_agent.get_prediction(game_data, is_training=False)
+            response = str(action)
         else:
             print("Saying HELLO to the tensorflow client!")
             response = "HI FROM TENSORFLOW SERVER! THIS IS WHAT YOU SENT ME:\n"+str(data)
@@ -116,7 +121,10 @@ def run():
     print('starting server...')
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
-    tf.variance_scaling_initializer(scale=2)
+    if not USE_SAVED_MODEL:
+        tf.variance_scaling_initializer(scale=2)
+    else:
+        print("Skipping weight init due to saved model being used")
     sess = tf.Session(config=config)
 
     with sess.as_default():
@@ -134,14 +142,22 @@ def run():
         # queue
         if ASYNC_TRAINING:
             print("Starting async training thread!")
-            thread = threading.Thread(target=async_training, args=(tf.get_default_graph(),))
+            thread = threading.Thread(target=async_training, args=(sess, tf.get_default_graph(),))
             thread.daemon = True
             thread.start()
 
         httpd.serve_forever()
 
-def async_training(g):
+def async_training(sess, g):
     with g.as_default():
+        saver = tf.train.Saver(max_to_keep=1)
+        testHTTPServer_RequestHandler.rl_agent.set_saver(saver, SAVED_MODEL_NAME)
+        if USE_SAVED_MODEL:
+            print("**** USING SAVED MODEL: "+MODEL_TO_LOAD+" *******")
+            saver = tf.train.import_meta_graph(MODEL_TO_LOAD+".meta")
+            saver.restore(sess,tf.train.latest_checkpoint(CHECKPOINT_DIR_TO_LOAD))
+            print("**** DONE LOADING! ******")
+
         while True:
             testHTTPServer_RequestHandler.rl_agent.train_model()
 

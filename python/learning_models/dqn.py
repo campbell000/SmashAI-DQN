@@ -35,6 +35,8 @@ class DQN(LearningModel):
         self.number_training_iterations = 0
         self.sorted_buffer = []
         self.use_sorted_rewards = use_sorted_rewards
+        self.saver = None
+        self.saver_name = None
         if not game_props.is_conv():
             self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr, game_props.learning_rate)
@@ -70,6 +72,10 @@ class DQN(LearningModel):
     def get_model(self):
         return self.model
 
+    def set_saver(self, saver, name):
+        self.saver = saver
+        self.saver_name = name
+
     # Trains the model one iteration (i.e. usually one mini batch)
     def train_model(self, training_sample):
         # We aren't actually using the training_sample directly. For DQN, we store it in the experience replay list.
@@ -82,7 +88,6 @@ class DQN(LearningModel):
 
         # if we don't have enough observations as dictated by the hyperparameters, then don't do any training until we do
         if self.number_training_iterations > self.game_props.num_obs_before_training:
-
             # If we have too many experiences in the replay list, pop the oldest one
             if len(self.experiences) > self.game_props.experience_buffer_size:
                 self.experiences.popleft()
@@ -98,6 +103,8 @@ class DQN(LearningModel):
                 rewards.append(experience.reward)
 
             with self.session.as_default():
+                if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
+                    self.saver.save(self.session, self.saver_name)
                 #arr = self.convert_to_network_input(experience_batch[0].curr_state)
                 #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
                 #a = grayscaled[0]
