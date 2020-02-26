@@ -21,14 +21,16 @@ from cnn import ConvolutionalNeuralNetwork
 
 MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
+SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
+UPDATE_SELF_PLAY_INTERVAL = 500000
 DOUBLE_DQN = True
 import datetime
 
 class DQN(LearningModel):
 
     # Initialize defaults for all of the variables
-    def __init__(self, session, game_props, rewarder, is_dueling, use_sorted_rewards=False):
+    def __init__(self, session, game_props, rewarder, is_dueling, is_self_play=False, use_sorted_rewards=False):
         super(DQN, self).__init__(session, game_props, rewarder)
         self.random_action_probability = 1
         self.experiences = deque()
@@ -36,12 +38,17 @@ class DQN(LearningModel):
         self.sorted_buffer = []
         self.use_sorted_rewards = use_sorted_rewards
         self.saver = None
+        self.is_self_play = is_self_play
         self.saver_name = None
         if not game_props.is_conv():
             self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr, game_props.learning_rate)
             self.target_model = NeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                               game_props.hidden_units_arr,game_props.learning_rate)
+            if (self.is_self_play):
+                self.self_play_model = NeuralNetwork(SELF_PLAY_NETWORK, game_props.network_input_length, game_props.network_output_length,
+                                                      game_props.hidden_units_arr,game_props.learning_rate)
+
         else:
             self.model = ConvolutionalNeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
@@ -57,6 +64,8 @@ class DQN(LearningModel):
         else:
             self.model = self.model.build()
             self.target_model = self.target_model.build()
+            if self.is_self_play:
+                self.self_play_model = self.self_play_model.build()
 
         if self.use_sorted_rewards:
             print("USING SORTED REWARDS FOR SPARSE GAMES")
@@ -75,6 +84,13 @@ class DQN(LearningModel):
     def set_saver(self, saver, name):
         self.saver = saver
         self.saver_name = name
+
+    def init_self_play_network(self):
+        if self.is_self_play:
+            with self.session.as_default():
+                copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
+                self.session.run(copy_ops)
+
 
     # Trains the model one iteration (i.e. usually one mini batch)
     def train_model(self, training_sample):
@@ -104,13 +120,8 @@ class DQN(LearningModel):
 
             with self.session.as_default():
                 if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
-                    self.saver.save(self.session, self.saver_name)
-                #arr = self.convert_to_network_input(experience_batch[0].curr_state)
-                #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
-                #a = grayscaled[0]
-                #w, h, c = a.shape
-                #b = a.reshape(w, h)
-                #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
+                    src_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=MAIN_NETWORK)
+                    self.saver.save(self.session, self.saver_name, var_list=src_vars)
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
@@ -137,6 +148,11 @@ class DQN(LearningModel):
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, TRAIN_NETWORK)
             self.session.run(copy_ops)
 
+        # Every M iterations, if we're self-playing, copy the main network into the self playing network
+        if self.is_self_play and self.number_training_iterations % UPDATE_SELF_PLAY_INTERVAL == 0:
+            copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
+            self.session.run(copy_ops)
+
         target_nn = self.target_model
         main_nn = self.model
         qvals = target_nn["output"].eval(feed_dict={target_nn["x"]: curr_states})
@@ -147,8 +163,6 @@ class DQN(LearningModel):
         # Calculate the reward for each experience in the batch
         ybatch = []
         for i in range(len(experience_batch)):
-            target = None
-            exx = experience_batch[i]
             # If the state is terminal, give the bot the reward for the state
             if experience_batch[i].is_terminal:
                 ybatch.append(rewards[i])
@@ -175,23 +189,21 @@ class DQN(LearningModel):
             self.session.run(main_nn["train"], feed_dict=feed_dict)
         except:
             print("SHIT BROKE")
-            #a = self.convert_to_network_input(experience_batch[0].prev_state)
-            #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
-            #Image.fromarray(a.astype('uint8')).save(str(self.number_training_iterations)+".png")
 
 
     def convert_to_network_input(self, state):
         return self.game_props.convert_state_to_network_input(state)
 
     # Returns an action. Based on the 3rd arg, the action is either random, or taken from the learned policy
-    def get_action(self, game_data, is_training=True):
+    def get_action(self, game_data, is_training=True, is_for_self_play=False):
         # Get a random action if we're training, and the random_action_probability calls for it
         if is_training and random.random() <= self.random_action_probability:
             return NNUtils.get_random_action(self.game_props.network_output_length)
         else:
             # Otherwise, get an action from the policy
+            model_to_use = self.self_play_model if is_for_self_play else self.model
             network_input = self.game_props.convert_state_to_network_input(game_data.get_current_state())
-            q_vals_per_action = self.model["output"].eval(feed_dict={self.model["x"]: [network_input]})[0]
+            q_vals_per_action = model_to_use["output"].eval(feed_dict={self.model["x"]: [network_input]})[0]
             return np.argmax(q_vals_per_action)
 
     # Returns a sample batch to train on.

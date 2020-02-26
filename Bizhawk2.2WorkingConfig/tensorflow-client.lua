@@ -10,6 +10,7 @@ local TRAIN = 0
 local EVAL = 1
 local HELLO = 2
 local SCREENSHOT = 3
+local TRAIN_SELF_PLAY = 4
 
 
 function CLIENT.convert_map_to_form_data(buffer_size, currentStateList, clientID, action)
@@ -69,6 +70,11 @@ function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
     return CLIENT.send_request_to_tensorflow_server(request_body)
 end
 
+function CLIENT.send_data_for_training(clientID, buffer_size, currentState)
+    local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, TRAIN_SELF_PLAY)
+    return CLIENT.send_request_to_tensorflow_server(request_body)
+end
+
 -- This function sends data to the server with the intention of training the model. It returns an action to perform as output
 function CLIENT.send_data_but_dont_train(clientID, buffer_size, currentState)
     local request_body = CLIENT.convert_map_to_form_data(buffer_size, currentState, clientID, EVAL)
@@ -90,6 +96,8 @@ function CLIENT.send_screenshot_data_for_training(clientID, data)
 
     return CLIENT.send_request_to_tensorflow_server(table.concat(buffer))
 end
+
+function send_data_for_self_play_training
 
 function CLIENT.notify_server_of_clipboard_screenshot(clientID)
     local buffer = {}

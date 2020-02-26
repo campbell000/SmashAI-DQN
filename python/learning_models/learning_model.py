@@ -17,7 +17,7 @@ class LearningModel(ABC):
         pass
 
     # Given a game state, returns the best action to perform
-    def get_action(self, game_data):
+    def get_action(self, game_data, is_for_self_play=False):
         pass
 
     # Trains the model one iteration (i.e. usually one mini batch)

@@ -1,16 +1,6 @@
 # This file is the server that listens to requests from Bizhawk / Lua to train (and retrieve predictions for) the
 # Super Smash Bros bot.
 
-"""
-Multi-process to-do:
--2. Verify that threading approach works
--1. Come up with metrics to measure success
-0. Test performance of threads vs multiprocess
-1. Make the act of deciding whether to train completely isolated (probably should go to child training subprocess)
-2. Make sample queue shared
-3. Figure out how to share models accross threads (Manager will make things slower)
-"""
-
 PORT = 8081
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import tensorflow as tf
@@ -38,6 +28,7 @@ TRAIN = 0
 EVAL = 1
 HELLO = 2
 CLIPBOARD_SCREENSHOT = 3
+TRAIN_SELF_PLAY = 4
 
 # Variables for games
 SMASH = 0
@@ -59,7 +50,10 @@ USING_CLIPBOARD_SCREENSHOTS = False
 USE_SAVED_MODEL = False
 MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level1.ckpt"
 CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
-SAVED_MODEL_NAME = "checkpoints/smash-mario-dk-level9.ckpt"
+MODEL_TO_SAVE_AS_NEW = "checkpoints/smash-mario-dk-level9.ckpt"
+
+# Variables for self-play training
+DO_SELF_PLAY = True
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
@@ -96,6 +90,17 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 self.rl_agent.train_model(async_training=ASYNC_TRAINING)
 
             response = str(action)
+
+        # If we're self training, return TWO actions. Return one action for the model that's actually training,
+        # and another that ISNT training, and has an earlier version of the model
+        elif game_data.get_client_action() == TRAIN_SELF_PLAY:
+            action = self.rl_agent.get_prediction(game_data, is_training=True)
+            self_play_action = self.rl_agent.get_prediction(game_data, is_training=False, is_for_self_play=True)
+            self.rl_agent.store_experience(client_id, game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
+            if not ASYNC_TRAINING:
+                self.rl_agent.train_model(async_training=ASYNC_TRAINING)
+
+            response = str(action)+","+str(self_play_action)
         elif game_data.get_client_action() == EVAL:
             action = self.rl_agent.get_prediction(game_data, is_training=False)
             response = str(action)
@@ -151,7 +156,7 @@ def run():
 def async_training(sess, g):
     with g.as_default():
         saver = tf.train.Saver(max_to_keep=1)
-        testHTTPServer_RequestHandler.rl_agent.set_saver(saver, SAVED_MODEL_NAME)
+        testHTTPServer_RequestHandler.rl_agent.set_saver(saver, MODEL_TO_SAVE_AS_NEW)
         if USE_SAVED_MODEL:
             print("**** USING SAVED MODEL: "+MODEL_TO_LOAD+" *******")
             saver = tf.train.import_meta_graph(MODEL_TO_LOAD+".meta")
@@ -192,6 +197,6 @@ def do_post_init(gameprops, rl_agent, session):
 def get_learning_model(sess, gameprops, rewarder):
     if MODEL == DQN_MODEL:
         print("Building DQN model. Dueling: "+str(DUELING_DQN))
-        return DQN(sess, gameprops, rewarder, DUELING_DQN)
+        return DQN(sess, gameprops, rewarder, DUELING_DQN, is_self_play=DO_SELF_PLAY)
 
 run()

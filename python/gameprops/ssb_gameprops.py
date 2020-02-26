@@ -38,15 +38,19 @@ class SSBGameProps(GameProps):
         self.hidden_units_arr = [5000, 5000, 2000, 2000, 1000]
 
     # This method converts all of the ssb data to a format that can be fed as inputs into the network
-    def convert_state_to_network_input(self, state):
+    def convert_state_to_network_input(self, state, reverse=False):
         # Iterate through each state's frames, and then through each player's data
         tf_data = []
         for i in range(state.get_num_frames()):
             # Normalize the data to (try and) get the data from 0-1.
             data = state.get_frame(i)
 
+            # If reverse = false, make player 1 the first half of the inputs, and player 2 the second half. If true,
+            # do the opposite. Useful for self-training.
+            player_order = range(1, 3) if not reverse else reversed(range(1, 3))
+
             # Append numeric data to vector. DO NOT MESS WITH THIS ORDER! THIS IS THE ORDER THAT THE INPUTS WILL GET FED INTO TENSORFLOW!
-            for player_id in range(1, 3):
+            for player_id in player_order:
                 tf_data.append(NNUtils.normalize(data.get(str(player_id)+"xp"), -9000, 9000))
                 tf_data.append(NNUtils.normalize(data.get(str(player_id)+"xv"), -70, 70))
                 tf_data.append(NNUtils.normalize(data.get(str(player_id)+"yp"), -9000, 9000))

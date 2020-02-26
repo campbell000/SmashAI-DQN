@@ -47,7 +47,7 @@ class GameProps():
         self.second_epsilon_step_size = (self.epsilon_end - self.second_epsilon_end) / self.second_num_steps_epislon_decay
         self.hidden_units_arr = [256, 256, 256]
 
-    def convert_state_to_network_input(self, state):
+    def convert_state_to_network_input(self, state, reverse=False):
         pass
 
     def is_conv(self):
