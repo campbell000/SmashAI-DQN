@@ -8,7 +8,9 @@ require "list"
 local TF_CLIENT = require("tensorflow-client")
 local tfServerSampleIteration = 0
 local currentStateBuffer = List.newList()
-local currentAction = 1 -- Start off doing nothing (INPUT_ORDER[32] == CENTER NOTHING)
+local currentAction = {}
+currentAction[1] = 13
+currentAction[2] = 13
 Game = {}
 
 function RandomVariable(length)
@@ -222,9 +224,9 @@ function getGameStateMap()
     return data
 end
 
-function get_input_string()
+function get_input_string(player)
     local string = ""
-    local x = joypad.get(1)
+    local x = joypad.get(player)
     for k, v in pairs(x) do
         if v == true then
             string = string.." "..k
@@ -255,7 +257,9 @@ function dumpPlayerInfo(player)
     gui.drawString(0,90, "In In Air: " .. Game.isInAir(player), null, null, 9)
     gui.drawString(0,100, "Jump Counter: " .. Game.getJumpsRemaining(player), null, null, 9)
     gui.drawString(0,110, "State Frame: " .. Game.getMovementFrame(player), null, null, 9)
-    gui.drawString(0,120, "INPUTS: "..string.format(get_input_string()), null, null, 9)
+    gui.drawString(0,120, "1 INPUTS: "..string.format(get_input_string(1)), null, null, 9)
+    gui.drawString(0,130, "2 INPUTS: "..string.format(get_input_string(2)), null, null, 9)
+
 end
 
 -- This method adds the current frame's information to the state buffer. If the state buffer is full,

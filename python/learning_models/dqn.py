@@ -23,7 +23,7 @@ MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
 SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
-UPDATE_SELF_PLAY_INTERVAL = 500000
+UPDATE_SELF_PLAY_INTERVAL = 18000000
 DOUBLE_DQN = True
 import datetime
 
@@ -59,6 +59,7 @@ class DQN(LearningModel):
 
         # If using Dueling DQN, build a NN that separates the value and advantage functions
         if is_dueling:
+            print("IS DUELING!")
             self.model = self.model.build_dueling()
             self.target_model = self.target_model.build_dueling()
         else:
@@ -91,6 +92,10 @@ class DQN(LearningModel):
                 copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
                 self.session.run(copy_ops)
 
+    def reset_for_self_play_update(self):
+        self.random_action_probability = 1
+        self.experiences.clear()
+        self.number_training_iterations = 0
 
     # Trains the model one iteration (i.e. usually one mini batch)
     def train_model(self, training_sample):
@@ -99,11 +104,11 @@ class DQN(LearningModel):
         self.experiences.append(training_sample[-1])
 
         # Let people know that the training has started
-        if self.number_training_iterations == self.game_props.num_obs_before_training:
+        if len(self.experiences) == self.game_props.num_obs_before_training:
             print("Started Training!")
 
         # if we don't have enough observations as dictated by the hyperparameters, then don't do any training until we do
-        if self.number_training_iterations > self.game_props.num_obs_before_training:
+        if len(self.experiences) > self.game_props.num_obs_before_training:
             # If we have too many experiences in the replay list, pop the oldest one
             if len(self.experiences) > self.game_props.experience_buffer_size:
                 self.experiences.popleft()
@@ -120,8 +125,7 @@ class DQN(LearningModel):
 
             with self.session.as_default():
                 if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
-                    src_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=MAIN_NETWORK)
-                    self.saver.save(self.session, self.saver_name, var_list=src_vars)
+                    self.saver.save(self.session, self.saver_name)
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
@@ -141,17 +145,29 @@ class DQN(LearningModel):
             elif self.random_action_probability > self.game_props.second_epsilon_end:
                 self.random_action_probability -= self.game_props.second_epsilon_step_size
 
+    def init_self_play_networks(self):
+        with self.session.as_default():
+            copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, TRAIN_NETWORK)
+            self.session.run(copy_ops)
+            copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
+            self.session.run(copy_ops)
 
     def train_neural_networks(self, experience_batch, prev_states, curr_states, prev_actions, rewards):
         # Every N iterations, update the training network with the model of the "real" network
         if self.number_training_iterations % UPDATE_TARGET_INTERVAL == 0:
+            print("Updating target network...")
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, TRAIN_NETWORK)
             self.session.run(copy_ops)
+            print("Done!");
 
         # Every M iterations, if we're self-playing, copy the main network into the self playing network
         if self.is_self_play and self.number_training_iterations % UPDATE_SELF_PLAY_INTERVAL == 0:
+            print("Updating self player...")
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
             self.session.run(copy_ops)
+            print("DONE!");
+            self.reset_for_self_play_update()
+            self.verbose_log_dump()
 
         target_nn = self.target_model
         main_nn = self.model
@@ -202,8 +218,8 @@ class DQN(LearningModel):
         else:
             # Otherwise, get an action from the policy
             model_to_use = self.self_play_model if is_for_self_play else self.model
-            network_input = self.game_props.convert_state_to_network_input(game_data.get_current_state())
-            q_vals_per_action = model_to_use["output"].eval(feed_dict={self.model["x"]: [network_input]})[0]
+            network_input = self.game_props.convert_state_to_network_input(game_data.get_current_state(), reverse=is_for_self_play)
+            q_vals_per_action = model_to_use["output"].eval(feed_dict={model_to_use["x"]: [network_input]})[0]
             return np.argmax(q_vals_per_action)
 
     # Returns a sample batch to train on.
@@ -213,16 +229,7 @@ class DQN(LearningModel):
         if num_total_experiences < self.game_props.mini_batch_size:
             num_samples = num_total_experiences
 
-        if self.use_sorted_rewards:
-            if self.number_training_iterations % 100 == 0 or len(self.sorted_buffer) == 0:
-                self.sorted_buffer = sorted(self.experiences, key=lambda ex: abs(ex.reward), reverse=True)
-            p = np.array([0.995 ** i for i in range(len(self.sorted_buffer))])
-            p = p / sum(p)
-            sample_idxs = np.random.choice(np.arange(len(self.sorted_buffer)), size=num_samples, p=p)
-            sample_output = [self.sorted_buffer[idx] for idx in sample_idxs]
-            return sample_output
-        else:
-            return random.sample(self.experiences, num_samples)
+        return random.sample(self.experiences, num_samples)
 
     def verbose_log_dump(self):
         print("\n***Verbose Log Dump*** ")

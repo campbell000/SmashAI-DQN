@@ -58,8 +58,12 @@ class RLAgent:
 
     # Given a state, gets an action.
     def get_prediction(self, game_data, is_training=True, is_for_self_play=False):
-        self.predictions_asked_for = self.predictions_asked_for + 1
+        if not is_for_self_play:
+            self.predictions_asked_for = self.predictions_asked_for + 1
         return self.model.get_action(game_data, is_training, is_for_self_play=is_for_self_play)
+
+    def init_self_play(self):
+        self.model.init_self_play_networks()
 
     # Stores the experience. It first stores the new data into a client-specific experience history. Then, if we're
     # doing async training, we add the current client history to the training sample queue (the trainer MAY not need

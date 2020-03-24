@@ -8,7 +8,7 @@ from datetime import datetime
 import csv
 
 FILES = [
-    "results/smash/smash-yoshi-yoshi9.txt"
+    "../reward_logs.txt"
 ]
 
 data = []
@@ -41,7 +41,11 @@ for a in range(len(data)):
     datecontainer.append([])
     roottime = datetime.strptime(d[0][0], "%Y-%m-%d %H:%M:%S.%f")
     for i in range(len(d)):
-        t = datetime.strptime(d[i][0], "%Y-%m-%d %H:%M:%S.%f")
+        t = None
+        try:
+            t = datetime.strptime(d[i][0], "%Y-%m-%d %H:%M:%S.%f")
+        except ValueError:
+            t = datetime.strptime(d[i][0], '%Y-%m-%d %H:%M:%S')
         diff = (t - roottime).total_seconds()
         datecontainer[a].append(diff)
 

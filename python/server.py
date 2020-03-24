@@ -48,12 +48,12 @@ DUELING_DQN = False
 USING_CLIPBOARD_SCREENSHOTS = False
 
 USE_SAVED_MODEL = False
-MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level1.ckpt"
+MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level9.ckpt"
 CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
-MODEL_TO_SAVE_AS_NEW = "checkpoints/smash-mario-dk-level9.ckpt"
+MODEL_TO_SAVE_AS_NEW = "checkpoints/yoshi-yoshi-BIG-level9.ckpt"
 
 # Variables for self-play training
-DO_SELF_PLAY = True
+DO_SELF_PLAY = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
@@ -127,6 +127,7 @@ def run():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     if not USE_SAVED_MODEL:
+        print("Initializing random weights")
         tf.variance_scaling_initializer(scale=2)
     else:
         print("Skipping weight init due to saved model being used")
@@ -155,13 +156,20 @@ def run():
 
 def async_training(sess, g):
     with g.as_default():
-        saver = tf.train.Saver(max_to_keep=1)
+        varsToRestore = tf.contrib.slim.get_variables_to_restore()
+        variables_to_restore = [v for v in varsToRestore if v.name.split('/')[0]=='main_network']
+        saver = tf.train.Saver(variables_to_restore, max_to_keep=1)
         testHTTPServer_RequestHandler.rl_agent.set_saver(saver, MODEL_TO_SAVE_AS_NEW)
         if USE_SAVED_MODEL:
             print("**** USING SAVED MODEL: "+MODEL_TO_LOAD+" *******")
             saver = tf.train.import_meta_graph(MODEL_TO_LOAD+".meta")
             saver.restore(sess,tf.train.latest_checkpoint(CHECKPOINT_DIR_TO_LOAD))
             print("**** DONE LOADING! ******")
+
+        if DO_SELF_PLAY:
+            print("Initializing self play network with main networks")
+            testHTTPServer_RequestHandler.rl_agent.init_self_play()
+            print("Done init self play network")
 
         while True:
             testHTTPServer_RequestHandler.rl_agent.train_model()

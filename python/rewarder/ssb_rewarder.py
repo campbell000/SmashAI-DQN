@@ -4,15 +4,27 @@ DEATH_STATES = list(range(9)) # TAKEN FROM gameConstants.lua!
 STAGE_SAFE_BOUNDARY = 2250
 class SSBRewarder(AbstractRewarder):
     def __init__(self, use_grounded=True, use_stay_on_stage=True):
-        self.give_damage_multiplier = 0.07
-        self.take_damage_multiplier = 0.03
+        self.give_damage_multiplier = 0.08
+        self.take_damage_multiplier = 0.02
+        self.life_multiplier = 2
+        self.death_multiplier = 5
+        self.living_multiplier = 0.0001
+        self.is_grounded_multiplier = 0.0001
+        self.stay_on_stage_multiplier = 0.0001
+        self.use_grounded = use_grounded
+        self.use_stay_on_stage = use_stay_on_stage
+
+        """ GOOD REWARDS AS OF MARCH 3rd 2020
+        self.give_damage_multiplier = 0.08
+        self.take_damage_multiplier = 0.02
         self.life_multiplier = 1
         self.death_multiplier = 5
         self.living_multiplier = 0.0001
-        self.is_grounded_multiplier = 0.000001
-        self.stay_on_stage_multiplier = 0.000001
+        self.is_grounded_multiplier = 0.0001
+        self.stay_on_stage_multiplier = 0.0001
         self.use_grounded = use_grounded
         self.use_stay_on_stage = use_stay_on_stage
+        """
 
         print("SSB REWARDER: ")
         print("  BOT DEALS DAMAGE MULTIPLIER: "+str(self.give_damage_multiplier))
