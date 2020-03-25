@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
+import utils
 import re
 import ast
 import copy
@@ -42,46 +43,31 @@ class GameDataParser:
 
         # We're using maps to store the data, rather than arrays, because the data is not guaranteed to be in order.
         # For example, frame 1's data might be interspersed with frame 0's data.
-        try:
-            for key in fields:
-                state_type = "current"
+        for key in fields:
+            state_type = "current"
+            value = None
+            try:
+                if 'image' in key:
+                    raise Exception("OK")
                 value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
+            except:
+                value = fields[key][0]
 
-                frame, dataKey = re.findall('\[(.*?)\]',key)
-                frame = int(frame)
+            frame, dataKey = re.findall('\[(.*?)\]',key)
+            frame = int(frame)
 
-                # Create GameDataState for the state if it doesn't exist.
-                if state_type not in map:
-                    map[state_type] = GameDataState()
+            # Create GameDataState for the state if it doesn't exist.
+            if state_type not in map:
+                map[state_type] = GameDataState()
 
-                game_state = map[state_type]
-                if game_state.get_frame(frame) == False:
-                    game_state.add_frame(frame)
+            game_state = map[state_type]
+            if game_state.get_frame(frame) == False:
+                game_state.add_frame(frame)
 
-                game_frame = game_state.get_frame(frame)
-                game_frame.add(dataKey, value)
-        except: #TODO: Exception for optional screenshot stuff, do this better
-            gs = GameDataState()
-            gs.add_frame(0)
-            frame = gs.get_frame(0)
-
-            for key in fields:
-                value = ast.literal_eval(fields[key][0]) # Everything returned by parse_qa is returned as a array of strings
-                frame.add(key, value)
-
-            map["current"] = gs
+            game_frame = game_state.get_frame(frame)
+            game_frame.add(dataKey, value)
 
         return GameData(map, action, clientID, req)
-
-    def add_screenshots_to_gamedata(gamedata, screenshots):
-        # when using screenshots, we only create one frame. Rearrange the game data object so that there's one frame
-        # per screenshot
-        state = gamedata.get_current_state()
-        single_frame = state.get_frame(0)
-        for idx, screenshot in enumerate(screenshots):
-            new_frame = copy.deepcopy(single_frame)
-            new_frame.add("screenshot", screenshot)
-            state.replace_frame(idx, new_frame)
 
 class GameData:
     def __init__(self, map, action, clientID, rawData):

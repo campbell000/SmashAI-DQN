@@ -17,7 +17,7 @@ import uuid
 from utils import Logger
 from gameprops.gameprops import *
 from cnn import ConvolutionalNeuralNetwork
-#from PIL import Image
+from PIL import Image
 
 MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
@@ -124,6 +124,15 @@ class DQN(LearningModel):
                 rewards.append(experience.reward)
 
             with self.session.as_default():
+                #arr = self.convert_to_network_input(experience_batch[0].curr_state)
+                #sss = arr.shape
+                #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
+                #a = grayscaled[0]
+                #w, h, c = a.shape
+                #b = a.reshape(w, h)
+                #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
+
+
                 if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
                     self.saver.save(self.session, self.saver_name)
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)

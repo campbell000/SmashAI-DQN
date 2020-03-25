@@ -2,10 +2,10 @@ from gameprops.gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 import numpy as np
-#import imageio
-#from PIL import Image
-#import PIL
-import uuid
+import imageio
+from PIL import Image
+from io import BytesIO
+import base64
 
 # A subclass of the GameProps specific to Pong.
 class PongScreenshotGameProps(GameProps):
@@ -26,8 +26,8 @@ class PongScreenshotGameProps(GameProps):
             [64, 4, 2],
             [64, 3, 1]
         ]
-        self.hidden_units_arr = [512, 256]
-        self.experience_buffer_size = 20000
+        self.hidden_units_arr = [256, 128]
+        self.experience_buffer_size = 50000
         self.future_reward_discount = 0.95
         self.mini_batch_size = 16
         self.num_obs_before_training = 16
@@ -40,8 +40,6 @@ class PongScreenshotGameProps(GameProps):
         self.img_scaling_factor = 3
         self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * Constants.NUM_FRAMES_PER_STATE,
                                           int(IMAGE_WIDTH/self.img_scaling_factor), 1)
-        self.model = None
-        self.session = None
 
     def is_conv(self):
         return True
@@ -49,11 +47,16 @@ class PongScreenshotGameProps(GameProps):
     def get_conv_params(self):
         return self.cnn_params
 
-    def convert_state_to_network_input(self, state):
+    def convert_state_to_network_input(self, state, reverse=False):
         input = []
         for i in range(state.get_num_frames()):
             data = state.get_frame(i)
-            image = data.get("screenshot")
+            try :
+                cleaned_image_data = data.get("image").strip('\n').strip('\r').replace(' ', '+')
+                image = Image.open(BytesIO(base64.b64decode(cleaned_image_data + "==="))) # https://gist.github.com/perrygeo/ee7c65bb1541ff6ac770
+            except:
+                print(data.get("image"))
+                raise Exception("AHHHH")
             w, h = image.size
             cropped = image.crop((self.LEFT, self.TOP, w - self.RIGHT, h - self.BOTTOM))
             image_array = np.asarray(cropped)
@@ -61,8 +64,4 @@ class PongScreenshotGameProps(GameProps):
                 input = image_array
             else:
                 input = np.vstack((input, image_array))
-
-
-        with self.session.as_default():
-            feed_dict = {self.model["rawInput"]: [input]}
-            return self.model["grayscaled"].eval(feed_dict=feed_dict)[0]
+        return input

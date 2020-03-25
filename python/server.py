@@ -45,7 +45,6 @@ DQN_MODEL = 1
 # on a separate thread
 ASYNC_TRAINING = True
 DUELING_DQN = False
-USING_CLIPBOARD_SCREENSHOTS = False
 
 USE_SAVED_MODEL = False
 MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level9.ckpt"
@@ -57,7 +56,7 @@ DO_SELF_PLAY = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = SMASH
+CURRENT_GAME = PONG_SCREENSHOT
 MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk
@@ -78,12 +77,6 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
         # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
         elif game_data.get_client_action() == TRAIN:
-            # If doing screenshots, we are sending ONLY the stuff we need to calculate reward. And we're ONLY
-            # sending values for ONE frame. We need to gather all the screenshots and add them to the game_data objects
-            if USING_CLIPBOARD_SCREENSHOTS:
-                self.rl_agent.store_screenshot_for_client_from_clipboard(client_id)
-                GameDataParser.add_screenshots_to_gamedata(game_data, self.rl_agent.get_screenshot_buffer_for_client(client_id, clear=True))
-
             action = self.rl_agent.get_prediction(game_data, is_training=True)
             self.rl_agent.store_experience(client_id, game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
             if not ASYNC_TRAINING:
@@ -192,8 +185,7 @@ def do_post_init(gameprops, rl_agent, session):
     if CURRENT_GAME == PONG:
         return
     if CURRENT_GAME == PONG_SCREENSHOT:
-        gameprops.session = session
-        gameprops.model = rl_agent.model.get_model()
+        return
     elif CURRENT_GAME == SMASH:
         return
     elif CURRENT_GAME == MARIOTENNIS:

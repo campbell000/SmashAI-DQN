@@ -49,7 +49,7 @@ class MarioTennisGameprops(GameProps):
     def get_num_possible_states(self):
         return self.num_possible_states
 
-    def convert_state_to_network_input(self, state):
+    def convert_state_to_network_input(self, state, reverse=False):
         X_POS_MAX = 120
         Y_POS_MAX = 26
         Z_POS_MAX = 266

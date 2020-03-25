@@ -60,6 +60,13 @@ class RLAgent:
     def get_prediction(self, game_data, is_training=True, is_for_self_play=False):
         if not is_for_self_play:
             self.predictions_asked_for = self.predictions_asked_for + 1
+
+        if self.predictions_asked_for % 10000 == 0:
+            print("========")
+            print(datetime.datetime.now())
+            print("Asked for "+str(self.predictions_asked_for)+" predictions!")
+            print("========")
+
         return self.model.get_action(game_data, is_training, is_for_self_play=is_for_self_play)
 
     def init_self_play(self):
@@ -112,8 +119,8 @@ class RLAgent:
                     print("Done putting terminal experience in queue")
                 else:
                     self.dropped = self.dropped + 1
-                    if self.dropped % 1000 == 0:
-                        print("Dropping experience because sample queue is full. Dropped: "+str(self.dropped))
+                    if self.dropped % 100000 == 0:
+                        print("Dropped 100,000 experience because sample queue is full. Dropped: "+str(self.dropped))
 
         if not async_training:
             self.single_client_id = client_id

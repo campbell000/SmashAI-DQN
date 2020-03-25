@@ -37,15 +37,14 @@ class ConvolutionalNeuralNetwork:
     def build(self):
         with tf.variable_scope(self.name):
             # image preprocessing: convert to grayscale and downsample
-            rawInput = tf.placeholder(tf.float32, shape=((None, ) + self.input_length)) # rows of input vectors
-            input_shape = rawInput.get_shape().as_list()
+            x = tf.placeholder(tf.float32, shape=((None, ) + self.input_length)) # rows of input vectors
+            input_shape = x.get_shape().as_list()
             height = int(input_shape[1] / self.img_scaling_factor)
             width = int(input_shape[2] / self.img_scaling_factor)
-            downsampled = tf.image.resize_images(rawInput,size=[height, width],
+            downsampled = tf.image.resize_images(x,size=[height, width],
                                                  method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
             grayscaled = tf.image.rgb_to_grayscale(downsampled)
 
-            x = tf.placeholder(tf.float32, ((None, ) + self.preprocessed_input_length))
             actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
             rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
@@ -57,7 +56,7 @@ class ConvolutionalNeuralNetwork:
                 filter_size = cnn_param_set[1]
                 stride = cnn_param_set[2]
                 if prev_layer is None:
-                    prev_layer = tf.layers.conv2d(inputs=x, filters=num_filters, kernel_size=filter_size, strides=stride, activation=tf.nn.relu)
+                    prev_layer = tf.layers.conv2d(inputs=grayscaled, filters=num_filters, kernel_size=filter_size, strides=stride, activation=tf.nn.relu)
                 else:
                     prev_layer = tf.layers.conv2d(inputs=prev_layer, filters=num_filters, kernel_size=filter_size, strides=stride, activation=tf.nn.relu)
 
@@ -88,7 +87,6 @@ class ConvolutionalNeuralNetwork:
             train = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
 
             self.map = {
-                "rawInput" : rawInput,
                 "layers" : layers,
                 "c" : [self.input_length, self.output_length],
                 "x" : x,
