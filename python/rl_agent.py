@@ -114,9 +114,7 @@ class RLAgent:
                 # If the experience is terminal, wait until there's room
                 # TODO: WILL NOT WORK WELL FOR ASYNCHRONOUS CLIENTS
                 if self.rewarder.experience_is_terminal(experience):
-                    print("Queue is full but waiting for opening because this experience is terminal!")
                     self.sample_queue.put(mem_copy)
-                    print("Done putting terminal experience in queue")
                 else:
                     self.dropped = self.dropped + 1
                     if self.dropped % 100000 == 0:
