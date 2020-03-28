@@ -49,6 +49,15 @@ class ConvolutionalNeuralNetwork:
             rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
 
+
+            """
+            self.cnn_params = [
+            [32, 8, 4],
+            [64, 4, 2],
+            [64, 3, 1]
+        ]
+            """
+
             # expects CNN params to be in format [[num_filters, filter_size, stride]]
             prev_layer = None
             for cnn_param_set in self.cnn_params:
