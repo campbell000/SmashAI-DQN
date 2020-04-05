@@ -26,6 +26,7 @@ class PongScreenshotGameProps(GameProps):
             [64, 4, 2],
             [64, 3, 1]
         ]
+        self.do_grayscale = True # don't need color
         self.hidden_units_arr = [512, 256]
         self.experience_buffer_size = 50000
         self.future_reward_discount = 0.95

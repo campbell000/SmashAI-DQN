@@ -52,10 +52,10 @@ class DQN(LearningModel):
         else:
             self.model = ConvolutionalNeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
-                                                    game_props.img_scaling_factor)
+                                                    game_props.img_scaling_factor, do_grayscale=game_props.do_grayscale)
             self.target_model = ConvolutionalNeuralNetwork(TRAIN_NETWORK, game_props.network_input_length, game_props.preprocessed_input_length, game_props.network_output_length,
                                           game_props.hidden_units_arr,game_props.get_conv_params(), game_props.learning_rate, game_props.mini_batch_size,
-                                                           game_props.img_scaling_factor)
+                                                           game_props.img_scaling_factor, do_grayscale=game_props.do_grayscale)
 
         # If using Dueling DQN, build a NN that separates the value and advantage functions
         if is_dueling:
@@ -105,7 +105,8 @@ class DQN(LearningModel):
 
         # Let people know that the training has started
         if len(self.experiences) == self.game_props.num_obs_before_training:
-            print("Started Training!")
+            print( self.game_props.num_obs_before_training)
+            print("Started Training! Got "+str(len(self.experiences))+" experiences in experience replay")
 
         # if we don't have enough observations as dictated by the hyperparameters, then don't do any training until we do
         if len(self.experiences) > self.game_props.num_obs_before_training:
@@ -129,9 +130,8 @@ class DQN(LearningModel):
                 #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
                 #a = grayscaled[0]
                 #w, h, c = a.shape
-                #b = a.reshape(w, h)
+                #b = a.reshape(w, h, c)
                 #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
-
 
                 if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
                     self.saver.save(self.session, self.saver_name)

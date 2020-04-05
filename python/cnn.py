@@ -13,7 +13,7 @@ import uuid
 class ConvolutionalNeuralNetwork:
 
     def __init__(self, name, input_length, preprocessed_input_length, output_length, nodes_per_fc_layer_arr, cnn_params,
-                 learning_rate, batch_size, img_scaling_factor, is_training=True):
+                 learning_rate, batch_size, img_scaling_factor, do_grayscale=True, is_training=True):
         self.input_length = input_length
         self.output_length = output_length
         self.learning_rate = learning_rate
@@ -26,6 +26,7 @@ class ConvolutionalNeuralNetwork:
         self.batch_size = batch_size
         self.img_scaling_factor = img_scaling_factor
         self.preprocessed_input_length = preprocessed_input_length
+        self.do_grayscale = do_grayscale
 
     def get_map(self):
         return self.map
@@ -43,20 +44,11 @@ class ConvolutionalNeuralNetwork:
             width = int(input_shape[2] / self.img_scaling_factor)
             downsampled = tf.image.resize_images(x,size=[height, width],
                                                  method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-            grayscaled = tf.image.rgb_to_grayscale(downsampled)
+            grayscaled = tf.image.rgb_to_grayscale(downsampled) if self.do_grayscale else downsampled
 
             actions = tf.placeholder(tf.float32, [None, self.output_length]) # should be rows of [0,0,...1,0,0]
             rewards = tf.placeholder(tf.float32, [None]) # should be rows of one value
             layers = []
-
-
-            """
-            self.cnn_params = [
-            [32, 8, 4],
-            [64, 4, 2],
-            [64, 3, 1]
-        ]
-            """
 
             # expects CNN params to be in format [[num_filters, filter_size, stride]]
             prev_layer = None

@@ -10,6 +10,7 @@ from gameprops.pong_gameprops import *
 from gameprops.ssb_gameprops import *
 from gameprops.mario_tennis_gameprops import *
 from gameprops.pong_screenshot_gameprops import *
+from gameprops.mario_tennis_screenshot_gameprops import *
 from shared_constants import Constants
 from gamedata_parser import *
 from rewarder.rewarder import *
@@ -36,6 +37,7 @@ PONG = 1
 MARIOTENNIS = 2
 TESTING = 3
 PONG_SCREENSHOT = 4
+MARIOTENNIS_SCREENSHOT = 5
 
 # Models
 SARSA_MODEL = 0
@@ -56,7 +58,7 @@ DO_SELF_PLAY = False
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
-CURRENT_GAME = PONG_SCREENSHOT
+CURRENT_GAME = MARIOTENNIS_SCREENSHOT
 MODEL = DQN_MODEL
 
 # This class handles requests from bizhawk
@@ -173,6 +175,8 @@ def get_game_specific_params():
         return [PongGameProps(), PongRewarder()]
     if CURRENT_GAME == PONG_SCREENSHOT:
         return [PongScreenshotGameProps(), PongScreenshotRewarder()]
+    if CURRENT_GAME == MARIOTENNIS_SCREENSHOT:
+        return [MarioTennisScreenshotGameProps(), MarioTennisRewarder()]
     elif CURRENT_GAME == SMASH:
         return [SSBGameProps(), SSBRewarder()]
     elif CURRENT_GAME == MARIOTENNIS:

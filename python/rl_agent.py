@@ -61,12 +61,6 @@ class RLAgent:
         if not is_for_self_play:
             self.predictions_asked_for = self.predictions_asked_for + 1
 
-        if self.predictions_asked_for % 10000 == 0:
-            print("========")
-            print(datetime.datetime.now())
-            print("Asked for "+str(self.predictions_asked_for)+" predictions!")
-            print("========")
-
         return self.model.get_action(game_data, is_training, is_for_self_play=is_for_self_play)
 
     def init_self_play(self):

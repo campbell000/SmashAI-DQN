@@ -56,16 +56,16 @@ TENNIS_INPUTS.DOWN_LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = -127}}
 TENNIS_INPUTS.LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = 0}}
 TENNIS_INPUTS.UP_LEFT = {{}, {["X Axis"] = -127, ["Y Axis"] = 127}}
 TENNIS_INPUTS.CENTER = {{}, {["X Axis"] = 0, ["Y Axis"] = 0}}
-TENNIS_INPUTS.RIGHT_A = {{["A"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.CENTER_A = {{["A"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
-TENNIS_INPUTS.LEFT_A = {{["A"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.RIGHT_B = {{["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.CENTER_B = {{["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
-TENNIS_INPUTS.LEFT_B = {{["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.RIGHT_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.CENTER_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
-TENNIS_INPUTS.LEFT_AB = {{["A"] = "True",["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
-TENNIS_INPUTS.CANCEL = {{["Z"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_A = {{["A"] = true }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_A = {{["A"] = true }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_A = {{["A"] = true }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_B = {{["B"] = true }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_B = {{["B"] = true }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_B = {{["B"] = true }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.RIGHT_AB = {{["A"] = true,["B"] = "True" }, {["X Axis"] = 127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CENTER_AB = {{["A"] = true, ["B"] = "True" }, {["X Axis"] = 0, ["Y Axis"] = 0}}
+TENNIS_INPUTS.LEFT_AB = {{["A"] = true, ["B"] = "True" }, {["X Axis"] = -127, ["Y Axis"] = 0}}
+TENNIS_INPUTS.CANCEL = {{["Z"] = true }, {["X Axis"] = 0, ["Y Axis"] = 0}}
 
 -- DO NOT CHANGE THIS ORDERING. We expect the Learning server to send a one-hot encoding, with a "1" corresponding to
 -- the chosen action. We use the index of the "1" element to get the corresponding TENNIS_INPUT in this array. So DO NOT CHANGE
