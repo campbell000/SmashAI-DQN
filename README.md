@@ -23,7 +23,7 @@ Averge Reward over time:
 ### Pong
 Average Reward over Time:
 
-![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/dueling-huber-time-vs-reward.png)
+![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/pong/dueling-huber-time-vs-reward.png)
 
 ## Essential Configuration
 For now, we have to use the "faster, less reliable (memory leaks!)" version of Lua in Bizhawk. So, to configire Bizhawk and test that it's working, do the following:
