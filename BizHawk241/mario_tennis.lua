@@ -19,7 +19,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 4
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 4
+local STATE_FRAME_SIZE = get_num_frames_per_state("mario_tennis")
 
 -- local variable to turn off communication with the server. Used for debugging purposes
 local SEND_TO_SERVER = true

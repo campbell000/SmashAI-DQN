@@ -1,5 +1,6 @@
 from gameprops.gameprops import *
 from shared_constants import Constants
+from shared_constants import SharedConstants
 from gamedata_parser import *
 import numpy as np
 import imageio
@@ -14,9 +15,11 @@ class MarioTennisScreenshotGameProps(GameProps):
         IMAGE_WIDTH = 320
         IMAGE_HEIGHT = 240
         self.img_scaling_factor = 3
-        self.network_input_length = (IMAGE_HEIGHT * Constants.NUM_FRAMES_PER_STATE, IMAGE_WIDTH, 3)
-        self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * Constants.NUM_FRAMES_PER_STATE,
-                                          int(IMAGE_WIDTH/self.img_scaling_factor)  * Constants.NUM_FRAMES_PER_STATE, 3)
+        shared_props = SharedConstants()
+        self.num_frames_per_state = shared_props.get_prop_val('mario_tennis_screenshot', 'num_frames_per_state')
+        self.network_input_length = (IMAGE_HEIGHT * self.num_frames_per_state, IMAGE_WIDTH, 3)
+        self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * self.num_frames_per_state,
+                                          int(IMAGE_WIDTH/self.img_scaling_factor)  * self.num_frames_per_state, 3)
         self.network_output_length = 19
         super(MarioTennisScreenshotGameProps, self).__init__(self.network_input_length, self.network_output_length)
 

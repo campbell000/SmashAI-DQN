@@ -70,10 +70,6 @@ class RLAgent:
     # doing async training, we add the current client history to the training sample queue (the trainer MAY not need
     # the full history (i.e. DQN just needs the most recent experience), but we're including it for ones that do (i.e. SARSA)
     def store_experience(self, client_id, current_state, action, async_training=True):
-        if current_state.get_num_frames() < Constants.NUM_FRAMES_PER_STATE:
-            print("DROPPING EXPERIENCE because the number of frames is wrong")
-            return
-
         # If this is the first time we're seeing this client, create a list to store experiences for that client
         experience = None
         add_to_training_queue = True
@@ -113,29 +109,10 @@ class RLAgent:
                     self.dropped = self.dropped + 1
                     if self.dropped % 100000 == 0:
                         print("Dropped 100,000 experience because sample queue is full. Dropped: "+str(self.dropped))
-
         if not async_training:
             self.single_client_id = client_id
 
         self.log_average_reward(experience)
-
-    def store_screenshot_for_client_from_clipboard(self, clientID):
-        if clientID not in self.screenshot_dict:
-            self.screenshot_dict[clientID] = []
-
-        image = ImageGrab.grabclipboard()
-        while image == None:
-            image = ImageGrab.grabclipboard()
-            print("WAITING")
-
-        self.screenshot_dict[clientID].append(image)
-
-    def get_screenshot_buffer_for_client(self, clientID, clear=False):
-        ss = self.screenshot_dict[clientID]
-        if clear:
-            self.screenshot_dict[clientID] = []
-
-        return ss
 
     def log_average_reward(self, experience):
         reward = self.rewarder.calculate_reward(experience)

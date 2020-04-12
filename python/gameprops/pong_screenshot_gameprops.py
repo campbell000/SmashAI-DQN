@@ -1,5 +1,6 @@
 from gameprops.gameprops import *
 from shared_constants import Constants
+from shared_constants import SharedConstants
 from gamedata_parser import *
 import numpy as np
 import imageio
@@ -19,7 +20,9 @@ class PongScreenshotGameProps(GameProps):
         IMAGE_WIDTH = (320 - self.LEFT) - self.RIGHT
         IMAGE_HEIGHT = (240 - self.TOP) - self.BOTTOM
 
-        self.pong_input_length = (IMAGE_HEIGHT * Constants.NUM_FRAMES_PER_STATE, IMAGE_WIDTH, 3)
+        shared_props = SharedConstants()
+        num_frames_per_state = shared_props.get_prop_val('pong_screenshot', 'num_frames_per_state')
+        self.pong_input_length = (IMAGE_HEIGHT * num_frames_per_state, IMAGE_WIDTH, 3)
         super(PongScreenshotGameProps, self).__init__(self.pong_input_length, 3) # 3 actions: up, down, and stand still
         self.cnn_params = [
             [32, 8, 4],
@@ -39,7 +42,7 @@ class PongScreenshotGameProps(GameProps):
         self.epsilon_end =  0.05
         self.epsilon_step_size = (1 - self.epsilon_end) / self.num_steps_epislon_decay
         self.img_scaling_factor = 3
-        self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * Constants.NUM_FRAMES_PER_STATE,
+        self.preprocessed_input_length = (int(IMAGE_HEIGHT/self.img_scaling_factor) * num_frames_per_state,
                                           int(IMAGE_WIDTH/self.img_scaling_factor), 1)
 
     def is_conv(self):

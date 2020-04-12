@@ -27,7 +27,7 @@ local TF_SERVER_SAMPLE_SKIP_RATE = 4
 -- This variable is the number of frames to represent a state: note that a "frame" and a "state" are NOT the same thing
 -- A "state" is an abstract representation of the game at a specific point in time. A "frame" is a video-game specific
 -- term to represent one 'tick' of game time.
-local STATE_FRAME_SIZE = 2
+local STATE_FRAME_SIZE = get_num_frames_per_state("smash")
 
 local STATE_COLLECTION_INTERVAL = 2
 
