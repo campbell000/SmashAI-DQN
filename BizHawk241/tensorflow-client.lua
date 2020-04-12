@@ -9,7 +9,6 @@ local CLIENT = {}
 local TRAIN = 0
 local EVAL = 1
 local HELLO = 2
-local SCREENSHOT = 3
 local TRAIN_SELF_PLAY = 4
 
 

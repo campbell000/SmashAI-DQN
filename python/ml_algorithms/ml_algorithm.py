@@ -1,6 +1,6 @@
 
 from abc import ABC
-class LearningModel(ABC):
+class MLAlgorithm(ABC):
 
     # Initialize defaults for all of the variables
     def __init__(self, session, game_props, rewarder):

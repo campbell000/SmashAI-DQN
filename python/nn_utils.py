@@ -21,6 +21,23 @@ class NeuralNetworkUtils:
         return op_holder
 
     @staticmethod
+    def get_tensor_value(src_name):
+        src_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=src_name)
+        return [src_var.value() for src_var in src_vars]
+
+    @staticmethod
+    def set_tensor_value(src_name, value):
+        src_vars = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope=src_name)
+
+        op_holder = []
+        for src_var, src_var_val in zip(src_vars, value):
+            op_holder.append(src_var.assign(src_var_val))
+
+        return op_holder
+
+    @staticmethod
     def get_one_hot(value, num_possible_classes):
         return np.eye(num_possible_classes)[value]
 

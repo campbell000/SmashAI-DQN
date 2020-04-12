@@ -1,5 +1,5 @@
 import random
-from learning_models.learning_model import LearningModel
+from ml_algorithms.ml_algorithm import MLAlgorithm
 from nn_utils import NeuralNetworkUtils as NNUtils
 from collections import deque
 import numpy as np
@@ -24,14 +24,16 @@ TRAIN_NETWORK = "train_network"
 SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
 UPDATE_SELF_PLAY_INTERVAL = 18000000
+UPDATE_MODEL_PREDICTOR_VALS_INTERVAL = 1000
 DOUBLE_DQN = True
 import datetime
 
-class DQN(LearningModel):
+class DQN(MLAlgorithm):
 
     # Initialize defaults for all of the variables
-    def __init__(self, session, game_props, rewarder, is_dueling, is_self_play=False, use_sorted_rewards=False):
+    def __init__(self, pipe, session, game_props, rewarder, is_dueling, is_self_play=False, use_sorted_rewards=False):
         super(DQN, self).__init__(session, game_props, rewarder)
+        self.pipe = pipe
         self.random_action_probability = 1
         self.experiences = deque()
         self.number_training_iterations = 0
@@ -40,6 +42,7 @@ class DQN(LearningModel):
         self.saver = None
         self.is_self_play = is_self_play
         self.saver_name = None
+        self.model_predictor_vals = None
         if not game_props.is_conv():
             self.model = NeuralNetwork(MAIN_NETWORK, game_props.network_input_length, game_props.network_output_length,
                                        game_props.hidden_units_arr, game_props.learning_rate)
@@ -124,18 +127,10 @@ class DQN(LearningModel):
                 actions.append(NNUtils.get_one_hot(experience.prev_action, self.game_props.network_output_length))
                 rewards.append(experience.reward)
 
-            with self.session.as_default():
-                #arr = self.convert_to_network_input(experience_batch[0].curr_state)
-                #sss = arr.shape
-                #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
-                #a = grayscaled[0]
-                #w, h, c = a.shape
-                #b = a.reshape(w, h, c)
-                #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
+            #if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
+            #    self.saver.save(self.session, self.saver_name)
 
-                if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
-                    self.saver.save(self.session, self.saver_name)
-                self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
+            self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
             # TODO: Revisit this if planning to use multiple agents. We might want to decrease this probability
@@ -178,6 +173,11 @@ class DQN(LearningModel):
             self.reset_for_self_play_update()
             self.verbose_log_dump()
 
+        # Every X iterations, update the cached set of values used to make predictions. Useful so that other processes
+        # use a copy of the predictor network
+        if self.number_training_iterations % UPDATE_MODEL_PREDICTOR_VALS_INTERVAL == 0:
+
+
         target_nn = self.target_model
         main_nn = self.model
         qvals = target_nn["output"].eval(feed_dict={target_nn["x"]: curr_states})
@@ -219,6 +219,10 @@ class DQN(LearningModel):
     def convert_to_network_input(self, state):
         return self.game_props.convert_state_to_network_input(state)
 
+    def refresh_predictor(self):
+        copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, MAIN_NETWORK)
+        self.session.run(copy_ops)
+
     # Returns an action. Based on the 3rd arg, the action is either random, or taken from the learned policy
     def get_action(self, game_data, is_training=True, is_for_self_play=False):
         # Get a random action if we're training, and the random_action_probability calls for it
@@ -245,3 +249,13 @@ class DQN(LearningModel):
         print(datetime.datetime.now())
         print("Num Training Iterations: "+str(self.number_training_iterations))
         print("RANDOM PROB: "+str(self.random_action_probability))
+
+    def debug_screenshot(self):
+        a = 3
+        #arr = self.convert_to_network_input(experience_batch[0].curr_state)
+        #sss = arr.shape
+        #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
+        #a = grayscaled[0]
+        #w, h, c = a.shape
+        #b = a.reshape(w, h, c)
+        #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")

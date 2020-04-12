@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from collections import deque
 import random
 from gamedata_parser import *
@@ -18,26 +17,19 @@ from collections import deque
 import queue
 import copy
 import datetime
-import threading
-#from PIL import ImageGrab
+import multiprocessing
+
+PREDICTION_UPDATE_INTERVAL = 1000
 
 class RLAgent:
-    """
-    Inspiration for this file comes from # https://github.com/DanielSlater/PyGamePlayer/blob/master/examples/deep_q_pong_player.py.
-    In it, the developer implements a DQN algorithm for PONG using image data (substantially different than my project).
-    """
-    def __init__(self, session, gameprops, rewarder, model, client_memory_size=None, verbose=False):
+    def __init__(self, rewarder, model_trainer, model_predictor, verbose=False):
         self.verbose = verbose
         self.rewarder = rewarder
-        self.gameprops = gameprops
-        self.session = session
-        self.model = model
-        self.sample_queue = queue.Queue(maxsize=100)
+        self.model_trainer = model_trainer
+        self.model_predictor = model_predictor
         self.client_experience_queue = {}
         self.single_client_id = None
-        self.model = model
         self.screenshot_dict = {}
-        self.saver = None
 
         # Used for logging peformance
         self.predictions_asked_for = 0
@@ -46,41 +38,33 @@ class RLAgent:
         self.dropped = 0
 
         # The length of the client's history to record is dictated by the model if not specified.
-        self.client_experience_memory_len = model.get_client_experience_memory_size() if client_memory_size is None else client_memory_size
-
-        # Build the NN models (idiot)
-        self.session.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver()
-        gameprops.dump()
-
-    def set_saver(self, saver, name):
-        self.model.set_saver(saver, name)
+        self.client_experience_memory_len = 1 # TODO SHOULD COME FROM ALGORITHM IMPLEMENTATION
 
     # Given a state, gets an action.
     def get_prediction(self, game_data, is_training=True, is_for_self_play=False):
         if not is_for_self_play:
             self.predictions_asked_for = self.predictions_asked_for + 1
 
-        return self.model.get_action(game_data, is_training, is_for_self_play=is_for_self_play)
+        if self.predictions_asked_for % 1000 == 0:
+            self.model_predictor.refresh_predictor(self.model_trainer)
 
-    def init_self_play(self):
-        self.model.init_self_play_networks()
+        return self.model_predictor.get_action(game_data, is_training, is_for_self_play=is_for_self_play)
 
     # Stores the experience. It first stores the new data into a client-specific experience history. Then, if we're
     # doing async training, we add the current client history to the training sample queue (the trainer MAY not need
     # the full history (i.e. DQN just needs the most recent experience), but we're including it for ones that do (i.e. SARSA)
-    def store_experience(self, client_id, current_state, action, async_training=True):
+    def train_with_current_experience(self, client_id, current_state, action):
         if current_state.get_num_frames() < Constants.NUM_FRAMES_PER_STATE:
             print("DROPPING EXPERIENCE because the number of frames is wrong")
             return
 
         # If this is the first time we're seeing this client, create a list to store experiences for that client
         experience = None
-        add_to_training_queue = True
+        has_valid_training_sample = True
         if client_id not in self.client_experience_queue:
             self.client_experience_queue[client_id] = deque()
             experience = Experience(current_state, action, current_state, action) # create a "dummy" state just to make things simple for the first time
-            add_to_training_queue = False
+            has_valid_training_sample = False
             print("Just met "+str(client_id))
         else:
             # Create a NEW experience based off the prev state and prev action
@@ -98,44 +82,13 @@ class RLAgent:
         if len(client_memory) > self.client_experience_memory_len:
             client_memory.popleft()
 
-        # Finally, copy the entire client's history (so we can continue to make changes to it) and put it on the
+        # Finally, copy the entire client's history (we treat the current history as a discrete training sample) and put it on the
         # queue to be processed by the training algorithm. If the queue is full, drop training sample
         mem_copy = copy.deepcopy(client_memory)
-        if add_to_training_queue and async_training:
-            if not self.sample_queue.full():
-                self.sample_queue.put_nowait(mem_copy)
-            else:
-                # If the experience is terminal, wait until there's room
-                # TODO: WILL NOT WORK WELL FOR ASYNCHRONOUS CLIENTS
-                if self.rewarder.experience_is_terminal(experience):
-                    self.sample_queue.put(mem_copy)
-                else:
-                    self.dropped = self.dropped + 1
-                    if self.dropped % 100000 == 0:
-                        print("Dropped 100,000 experience because sample queue is full. Dropped: "+str(self.dropped))
-
-        if not async_training:
-            self.single_client_id = client_id
+        if has_valid_training_sample:
+            self.model_trainer.train_model(mem_copy)
 
         self.log_average_reward(experience)
-
-    def store_screenshot_for_client_from_clipboard(self, clientID):
-        if clientID not in self.screenshot_dict:
-            self.screenshot_dict[clientID] = []
-
-        image = ImageGrab.grabclipboard()
-        while image == None:
-            image = ImageGrab.grabclipboard()
-            print("WAITING")
-
-        self.screenshot_dict[clientID].append(image)
-
-    def get_screenshot_buffer_for_client(self, clientID, clear=False):
-        ss = self.screenshot_dict[clientID]
-        if clear:
-            self.screenshot_dict[clientID] = []
-
-        return ss
 
     def log_average_reward(self, experience):
         reward = self.rewarder.calculate_reward(experience)
@@ -149,14 +102,8 @@ class RLAgent:
                 file.write(row+"\n")
 
     # Trains the agent based on the given model
-    def train_model(self, async_training=True):
-        # If we're asynchronously training, grab the client's history from the sample queue (or wait until one exists)
-        # Otherwise, just grab what's in the client's history directly (since we know it won'y be changing out from
-        # under us, as we're doing synchronous training). TODO: This assumes that sync training = only one client!
-        if async_training:
-            self.model.train_model(self.sample_queue.get())
-        else:
-            self.model.train_model(self.client_experience_queue[self.single_client_id])
+    def train_model(self):
+        self.model.train_model(self.sample_queue.get())
 
 class Experience:
     def __init__(self, prev_state, prev_action, curr_state, curr_action):
