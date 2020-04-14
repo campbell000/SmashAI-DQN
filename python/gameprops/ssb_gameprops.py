@@ -9,7 +9,7 @@ from nn_utils import NeuralNetworkUtils as NNUtils
 # We need to know the number of possible states (which varies depending on character), as well
 class SSBGameProps(GameProps):
 
-
+    # "BIG" SET AS OF APRIL 2020
     def __init__(self):
         # First, calculate the number of inputs based on the number of possible states
         NUM_POSSIBLE_STATES = 254 # based on highest value in RAM for pikachu, which looks like 0xFD
