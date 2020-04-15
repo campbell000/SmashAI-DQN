@@ -24,6 +24,7 @@ TRAIN_NETWORK = "train_network"
 SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
 UPDATE_SELF_PLAY_INTERVAL = 18000000
+SAVE_INTERVAL = 500000
 DOUBLE_DQN = True
 import datetime
 
@@ -125,16 +126,15 @@ class DQN(LearningModel):
                 rewards.append(experience.reward)
 
             with self.session.as_default():
-                #arr = self.convert_to_network_input(experience_batch[0].curr_state)
-                #sss = arr.shape
-                #grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
-                #a = grayscaled[0]
-                #w, h, c = a.shape
-                #b = a.reshape(w, h, c)
-                #Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
+                #self.debug_screenshot(experience_batch)
+                if self.number_training_iterations % SAVE_INTERVAL == 0 and self.number_training_iterations > 10:
+                    if self.saver is not None:
+                        print("Saving...")
+                        self.saver.save(self.session, self.saver_name)
+                        print("Done Saving!")
+                    else:
+                        print("Not saving cause DO_SAVE was False!")
 
-                if self.number_training_iterations % 1000000 == 0 and self.number_training_iterations > 10:
-                    self.saver.save(self.session, self.saver_name)
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
             # Finally, update the probability of taking a random action according to epsilon
@@ -210,10 +210,7 @@ class DQN(LearningModel):
             main_nn["action"] : prev_actions,
             main_nn["actual_q_value"] : ybatch
         }
-        try:
-            self.session.run(main_nn["train"], feed_dict=feed_dict)
-        except:
-            print("SHIT BROKE")
+        self.session.run(main_nn["train"], feed_dict=feed_dict)
 
 
     def convert_to_network_input(self, state):
@@ -239,6 +236,15 @@ class DQN(LearningModel):
             num_samples = num_total_experiences
 
         return random.sample(self.experiences, num_samples)
+
+    def debug_screenshot(self, experience_batch):
+        arr = self.convert_to_network_input(experience_batch[0].curr_state)
+        sss = arr.shape
+        grayscaled = self.session.run(self.model["grayscaled"], feed_dict={ self.model["x"]: [arr]})
+        a = grayscaled[0]
+        w, h, c = a.shape
+        b = a.reshape(w, h, c)
+        Image.fromarray(b.astype('uint8')).save(str(self.number_training_iterations)+".png")
 
     def verbose_log_dump(self):
         print("\n***Verbose Log Dump*** ")

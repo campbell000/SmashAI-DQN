@@ -44,10 +44,10 @@ DQN_MODEL = 1
 DUELING_DQN = False
 
 USE_SAVED_MODEL = False
-DO_SAVING = False
-MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level9.ckpt"
+DO_SAVING = True
+MODEL_TO_LOAD = "checkpoints/pong.ckpt"
 CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
-MODEL_TO_SAVE_AS_NEW = "checkpoints/yoshi-yoshi-BIG-level9.ckpt"
+MODEL_TO_SAVE_AS_NEW = "checkpoints/pong.ckpt"
 
 # Variables for self-play training
 DO_SELF_PLAY = False
@@ -103,7 +103,13 @@ def async_training(rl_agent, sess, g):
         varsToRestore = tf.contrib.slim.get_variables_to_restore()
         variables_to_restore = [v for v in varsToRestore if v.name.split('/')[0]=='main_network']
         saver = tf.train.Saver(variables_to_restore, max_to_keep=1)
-        rl_agent.set_saver(saver, MODEL_TO_SAVE_AS_NEW)
+
+        if DO_SAVING:
+            print("Configuring to save model at "+MODEL_TO_SAVE_AS_NEW)
+            rl_agent.set_saver(saver, MODEL_TO_SAVE_AS_NEW)
+        else:
+            print("ATTENTION -- NOT SAVING MODEL AT ALL!!!!!")
+
         if USE_SAVED_MODEL:
             print("**** USING SAVED MODEL: "+MODEL_TO_LOAD+" *******")
             saver = tf.train.import_meta_graph(MODEL_TO_LOAD+".meta")
