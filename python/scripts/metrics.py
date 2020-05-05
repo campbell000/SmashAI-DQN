@@ -8,7 +8,10 @@ from datetime import datetime
 import csv
 
 FILES = [
-    "../reward_logs.txt"
+    "../reward_logs.txt",
+    #"../old_reward_logs.txt",
+    "results/smash/yoshi-yoshi-big-selfplay-round1.txt",
+
 ]
 
 data = []

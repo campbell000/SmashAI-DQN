@@ -23,7 +23,7 @@ MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
 SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
-UPDATE_SELF_PLAY_INTERVAL = 18000000
+UPDATE_SELF_PLAY_INTERVAL = 30000000
 DOUBLE_DQN = True
 import datetime
 
@@ -165,6 +165,8 @@ class DQN(LearningModel):
             print("Updating self player...")
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
             self.session.run(copy_ops)
+            print("***")
+            print(datetime.datetime.now())
             print("DONE!");
             self.reset_for_self_play_update()
             self.verbose_log_dump()

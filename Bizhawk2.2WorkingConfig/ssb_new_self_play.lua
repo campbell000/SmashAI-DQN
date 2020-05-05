@@ -335,8 +335,15 @@ function convertServerResponseToAction(resp)
     -- We're adding one because the INPUT_ORDER array starts at 1 (normal lua arrays), but server response starts at 0!
     local ret = {};
     local tokens = split(resp, ",");
-    ret[1] = tonumber(tokens[1]) + 1
-    ret[2] = tonumber(tokens[2]) + 1
+    if tokens[1] == nil then
+        print("Got Nil from server, defaulting to action 1")
+        ret[1] = 1
+        ret[2] = 1
+    else
+        ret[1] = tonumber(tokens[1]) + 1
+        ret[2] = tonumber(tokens[2]) + 1
+    end
+
     return ret
 end
 

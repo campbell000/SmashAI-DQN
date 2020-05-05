@@ -47,13 +47,13 @@ ASYNC_TRAINING = True
 DUELING_DQN = False
 USING_CLIPBOARD_SCREENSHOTS = False
 
-USE_SAVED_MODEL = False
-MODEL_TO_LOAD = "checkpoints/smash-mario-dk-level9.ckpt"
+USE_SAVED_MODEL = True
+MODEL_TO_LOAD = "checkpoints/yoshi-yoshi-BIG-self-train-round1.ckpt"
 CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
-MODEL_TO_SAVE_AS_NEW = "checkpoints/yoshi-yoshi-BIG-level9.ckpt"
+MODEL_TO_SAVE_AS_NEW = "checkpoints/yoshi-yoshi-BIG-self-train-round2.ckpt"
 
 # Variables for self-play training
-DO_SELF_PLAY = False
+DO_SELF_PLAY = True
 
 # Variables to change to modify crucial hyper parameters (i.e. game being tested, DRL algorithm used, etc)
 # Change this to modify the game
@@ -78,6 +78,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
         # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
         elif game_data.get_client_action() == TRAIN:
+            print("TRAIN")
             # If doing screenshots, we are sending ONLY the stuff we need to calculate reward. And we're ONLY
             # sending values for ONE frame. We need to gather all the screenshots and add them to the game_data objects
             if USING_CLIPBOARD_SCREENSHOTS:

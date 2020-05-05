@@ -49,7 +49,8 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
     res = {}
     --request_body = lzw.deflate(request_body)
     --print(request_body)
-    local a, b, c, d = http.request {
+
+    if pcall(http.request,  {
         method = "POST",
         url = "http://127.0.0.1:8081",
         headers =
@@ -58,9 +59,23 @@ function CLIENT.send_request_to_tensorflow_server(request_body)
         },
         source = ltn12.source.string(request_body),
         sink = ltn12.sink.table(res)
-    }
+    }) then
+        response =  table.concat(res)
+    else
+        print("Failed...trying again")
+        http.request {
+            method = "POST",
+            url = "http://127.0.0.1:8081",
+            headers =
+            {
+                ["Content-Length"] = #request_body;
+            },
+            source = ltn12.source.string(request_body),
+            sink = ltn12.sink.table(res)
+        }
+        response =  table.concat(res)
+    end
 
-    response =  table.concat(res)
     return response
 end
 
