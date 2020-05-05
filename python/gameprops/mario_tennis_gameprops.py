@@ -1,5 +1,6 @@
 from gameprops.gameprops import *
 from shared_constants import Constants
+from shared_constants import SharedConstants
 from nn_utils import *
 import numpy as np
 from nn_utils import NeuralNetworkUtils as NNUtils
@@ -7,8 +8,10 @@ from nn_utils import NeuralNetworkUtils as NNUtils
 class MarioTennisGameprops(GameProps):
 
     def __init__(self):
+        shared_props = SharedConstants()
+        self.num_frames_per_state = shared_props.get_prop_val('mario_tennis', 'num_frames_per_state')
         self.NUM_BALL_SPIN_STATES = 16 # number of possible ball spin states (topspin, slice, etc)
-        self.network_input_length = (Constants.NUM_FRAMES_PER_STATE * (16 + self.NUM_BALL_SPIN_STATES))
+        self.network_input_length = (self.num_frames_per_state * (16 + self.NUM_BALL_SPIN_STATES))
         self.network_output_length = 19
         super(MarioTennisGameprops, self).__init__(self.network_input_length, self.network_output_length)
 
@@ -49,7 +52,7 @@ class MarioTennisGameprops(GameProps):
     def get_num_possible_states(self):
         return self.num_possible_states
 
-    def convert_state_to_network_input(self, state):
+    def convert_state_to_network_input(self, state, reverse=False):
         X_POS_MAX = 120
         Y_POS_MAX = 26
         Z_POS_MAX = 266
@@ -67,7 +70,7 @@ class MarioTennisGameprops(GameProps):
         input = np.zeros((self.network_input_length))
         for i in range(state.get_num_frames()):
             data = state.get_frame(i)
-            base_index = int(i * (self.network_input_length / Constants.NUM_FRAMES_PER_STATE))
+            base_index = int(i * (self.network_input_length / self.num_frames_per_state))
             # Build flat array, but normalize values between -1 and 1
             #TODO: WE ARE SIMPLIFYING RIGHT NOW BY ASSUMING CPU IS ALWAYS CLOSEST TO PLAYER
             input[base_index+0] = NNUtils.normalize(data.get("1x"), X_POS_MIN, X_POS_MAX)

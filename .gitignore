@@ -14,3 +14,5 @@ __pycache__/
 saved_sessions/
 checkpoints/
 saved_models
+SaveRAM
+*QuickSave*
