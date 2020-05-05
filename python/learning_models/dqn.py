@@ -23,12 +23,8 @@ MAIN_NETWORK = "main_network"
 TRAIN_NETWORK = "train_network"
 SELF_PLAY_NETWORK = "self_play"
 UPDATE_TARGET_INTERVAL = 10000
-<<<<<<< HEAD
 UPDATE_SELF_PLAY_INTERVAL = 30000000
-=======
-UPDATE_SELF_PLAY_INTERVAL = 18000000
 SAVE_INTERVAL = 500000
->>>>>>> 435d0d5ee40dc09674894ee8d184278509e90332
 DOUBLE_DQN = True
 import datetime
 
@@ -141,7 +137,6 @@ class DQN(LearningModel):
 
                 self.train_neural_networks(experience_batch, prev_states, curr_states, actions, rewards)
 
-            # Finally, update the probability of taking a random action according to epsilon
             # TODO: Revisit this if planning to use multiple agents. We might want to decrease this probability
             # TODO: on getting actions, rather than every training sample.
             self.adjust_random_action_prob()
@@ -171,6 +166,8 @@ class DQN(LearningModel):
             print("Updating target network...")
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, TRAIN_NETWORK)
             self.session.run(copy_ops)
+            print("***")
+            print(datetime.datetime.now())
             print("Done!");
 
         # Every M iterations, if we're self-playing, copy the main network into the self playing network
@@ -178,9 +175,6 @@ class DQN(LearningModel):
             print("Updating self player...")
             copy_ops = NNUtils.cope_source_into_target(MAIN_NETWORK, SELF_PLAY_NETWORK)
             self.session.run(copy_ops)
-            print("***")
-            print(datetime.datetime.now())
-            print("DONE!");
             self.reset_for_self_play_update()
             self.verbose_log_dump()
 

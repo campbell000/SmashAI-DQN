@@ -73,18 +73,8 @@ class QuickOneMinuteOatsServer(BaseHTTPRequestHandler):
         client_id = game_data.get_clientID()
 
         # If the action is TRAIN, get a best action, store the current state, and do some training (if we're doing sync training)
-<<<<<<< HEAD
-        elif game_data.get_client_action() == TRAIN:
-            print("TRAIN")
-            # If doing screenshots, we are sending ONLY the stuff we need to calculate reward. And we're ONLY
-            # sending values for ONE frame. We need to gather all the screenshots and add them to the game_data objects
-            if USING_CLIPBOARD_SCREENSHOTS:
-                self.rl_agent.store_screenshot_for_client_from_clipboard(client_id)
-                GameDataParser.add_screenshots_to_gamedata(game_data, self.rl_agent.get_screenshot_buffer_for_client(client_id, clear=True))
-
-=======
         if game_data.get_client_action() == TRAIN:
->>>>>>> 435d0d5ee40dc09674894ee8d184278509e90332
+            print("TRAIN")
             action = self.rl_agent.get_prediction(game_data, is_training=True)
             self.rl_agent.store_experience(client_id, game_data.get_current_state(), action, async_training=ASYNC_TRAINING)
             if not ASYNC_TRAINING:

@@ -43,17 +43,17 @@ DQN_MODEL = 1
 # on a separate thread
 DUELING_DQN = False
 
-USE_SAVED_MODEL = False
+USE_SAVED_MODEL = True
 DO_SAVING = True
-MODEL_TO_LOAD = "checkpoints/pong.ckpt"
+MODEL_TO_LOAD = "checkpoints/yoshi-yoshi-BIG-self-train-round1.ckpt"
 CHECKPOINT_DIR_TO_LOAD = "checkpoints/"
-MODEL_TO_SAVE_AS_NEW = "checkpoints/pong.ckpt"
+MODEL_TO_SAVE_AS_NEW = "checkpoints/yoshi-yoshi-BIG-self-train-round2.ckpt"
 
 # Variables for self-play training
-DO_SELF_PLAY = False
+DO_SELF_PLAY = True
 ASYNC_TRAINING = True
 
-CURRENT_GAME = PONG
+CURRENT_GAME = SMASH
 MODEL = DQN_MODEL
 
 MODEL_STRING = "DQN" if MODEL == DQN_MODEL else "SARSA"
