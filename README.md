@@ -1,5 +1,8 @@
 # DQN Using Tensorflow and Emuhawk
-This project contains code that allows DQN agents to learn and perform well at Pong, Mario Tennis, and Super Smash Brothers (all for the N64). It consists of a python server (which does all the ML via tensorflow) and a lua client (runnable via EmuHawk's Lua Script Console). While this project may not ever be in "publishable" state, I think that the majority of it could be useful for those looking to use Deep Reinforcement Learning algorithms on NES, SNES, N64, and other classic console games.
+This project contains code that trains DQN agents in a variety of N64 games, including Pong, Mario Tennis, and Super Smash Brothers. It consists of a python server (which does all the ML via tensorflow) and a lua client (runnable via EmuHawk's Lua Script Console). While this project may not ever be in "publishable" state, I think that the majority of it could be useful for those looking to use Deep Reinforcement Learning algorithms on NES, SNES, N64, and other classic console games.
+
+## Notes on the Deep Q-Network implementation
+Unlike the standard approach of using images, the majority of scripts included use values derived from memory locations (i.e. x position, health, time, etc). Since, theoretically, images are merely abstractions of those things, I would assume that this simply makes training go by much faster. There IS code here to send images back and forth, but it's much slower and not as well tested.
 
 ## The results
 ### Mario Tennis
