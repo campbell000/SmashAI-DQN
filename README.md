@@ -15,7 +15,7 @@ Averge Reward over time:
 ![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/mariotennis/iterations-vs-reward.png)
 
 ### Super Smash Brothers
-Trained on a level 9 Pikachu (bot is Yoshi)
+Trained against an earlier version of itself
 
 Video: https://www.youtube.com/watch?v=9P_Osy5-Fno
 
