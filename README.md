@@ -21,7 +21,7 @@ Video: https://www.youtube.com/watch?v=9P_Osy5-Fno
 
 Averge Reward over time:
 
-![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/results/smash/iterations-vs-reward.png)
+![Avg Reward](https://github.com/campbell000/DeepLearningProject/blob/master/python/scripts/iterations-vs-reward.png)
 
 ### Pong
 Average Reward over Time:
